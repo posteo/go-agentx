@@ -17,7 +17,6 @@ type Client struct {
 	Timeout time.Duration
 	NameOID string
 	Name    string
-	Debug   bool
 
 	connection  net.Conn
 	requestChan chan *request
@@ -33,39 +32,69 @@ func (c *Client) Open() error {
 	c.connection = connection
 	c.sessions = make(map[uint32]*Session)
 
-	writer := bufio.NewWriter(c.connection)
+	tx := c.runTransmitter()
+	rx := c.runReceiver()
+	c.runDispatcher(tx, rx)
+
+	return nil
+}
+
+// Close tears down the client.
+func (c *Client) Close() error {
+	if err := c.connection.Close(); err != nil {
+		return errgo.Mask(err)
+	}
+	return nil
+}
+
+// Session sets up a new session.
+func (c *Client) Session() (*Session, error) {
+	s := &Session{
+		client:  c,
+		timeout: c.Timeout,
+	}
+	if err := s.open(c.NameOID, c.Name); err != nil {
+		return nil, errgo.Mask(err)
+	}
+	c.sessions[s.ID()] = s
+
+	return s, nil
+}
+
+func (c *Client) runTransmitter() chan *pdu.HeaderPacket {
 	tx := make(chan *pdu.HeaderPacket)
+	writer := bufio.NewWriter(c.connection)
+
 	go func() {
 		for headerPacket := range tx {
-			if c.Debug {
-				log.Printf("out %v", headerPacket)
-			}
 			headerPacketBytes, err := headerPacket.MarshalBinary()
 			if err != nil {
-				panic(err)
+				log.Printf(errgo.Details(err))
+				continue
 			}
 			if _, err := writer.Write(headerPacketBytes); err != nil {
-				panic(err)
+				log.Printf(errgo.Details(err))
+				continue
 			}
 			if err := writer.Flush(); err != nil {
-				panic(err)
-			}
-			if c.Debug {
-				log.Printf("sent (%2d) %x", len(headerPacketBytes), headerPacketBytes)
+				log.Printf(errgo.Details(err))
+				continue
 			}
 		}
 	}()
 
-	reader := bufio.NewReader(c.connection)
+	return tx
+}
+
+func (c *Client) runReceiver() chan *pdu.HeaderPacket {
 	rx := make(chan *pdu.HeaderPacket)
+	reader := bufio.NewReader(c.connection)
+
 	go func() {
 		for {
 			headerBytes := make([]byte, pdu.HeaderSize)
 			if _, err := reader.Read(headerBytes); err != nil {
 				panic(err)
-			}
-			if c.Debug {
-				log.Printf("recv (%2d) %x", len(headerBytes), headerBytes)
 			}
 
 			header := &pdu.Header{}
@@ -88,24 +117,21 @@ func (c *Client) Open() error {
 			if _, err := reader.Read(packetBytes); err != nil {
 				panic(err)
 			}
-			if c.Debug {
-				log.Printf("recv (%2d) %x", len(packetBytes), packetBytes)
-			}
 
 			if err := packet.UnmarshalBinary(packetBytes); err != nil {
 				panic(err)
 			}
 
-			headerPacket := &pdu.HeaderPacket{Header: header, Packet: packet}
-			if c.Debug {
-				log.Printf("in %v", headerPacket)
-			}
-
-			rx <- headerPacket
+			rx <- &pdu.HeaderPacket{Header: header, Packet: packet}
 		}
 	}()
 
+	return rx
+}
+
+func (c *Client) runDispatcher(tx, rx chan *pdu.HeaderPacket) {
 	c.requestChan = make(chan *request)
+
 	go func() {
 		currentPacketID := uint32(0)
 		responseChans := make(map[uint32]chan *pdu.HeaderPacket)
@@ -135,30 +161,6 @@ func (c *Client) Open() error {
 			}
 		}
 	}()
-
-	return nil
-}
-
-// Close tears down the client.
-func (c *Client) Close() error {
-	if err := c.connection.Close(); err != nil {
-		return errgo.Mask(err)
-	}
-	return nil
-}
-
-// Session sets up a new session.
-func (c *Client) Session() (*Session, error) {
-	s := &Session{
-		client:  c,
-		timeout: c.Timeout,
-	}
-	if err := s.open(c.NameOID, c.Name); err != nil {
-		return nil, errgo.Mask(err)
-	}
-	c.sessions[s.ID()] = s
-
-	return s, nil
 }
 
 func (c *Client) request(hp *pdu.HeaderPacket) *pdu.HeaderPacket {

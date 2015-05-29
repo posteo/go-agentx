@@ -3,6 +3,8 @@ package pdu
 import (
 	"bytes"
 	"encoding/binary"
+	"net"
+	"time"
 
 	"github.com/juju/errgo"
 )
@@ -40,22 +42,57 @@ func (v *Variable) MarshalBinary() ([]byte, error) {
 
 	nameBytes, err := v.Name.MarshalBinary()
 	if err != nil {
-		return []byte{}, errgo.Mask(err)
+		return nil, errgo.Mask(err)
 	}
 	buffer.Write(nameBytes)
 
 	switch v.Type {
+	case VariableTypeInteger:
+		value := v.Value.(int32)
+		binary.Write(buffer, binary.LittleEndian, &value)
 	case VariableTypeOctetString:
 		octetString := &OctetString{Text: v.Value.(string)}
 		octetStringBytes, err := octetString.MarshalBinary()
 		if err != nil {
-			return []byte{}, errgo.Mask(err)
+			return nil, errgo.Mask(err)
 		}
 		buffer.Write(octetStringBytes)
-	case VariableTypeNull:
-
+	case VariableTypeNull, VariableTypeNoSuchObject, VariableTypeNoSuchInstance:
+		break
+	case VariableTypeObjectIdentifier:
+		oid := &ObjectIdentifier{}
+		oid.SetIdentifier(v.Value.(string))
+		oidBytes, err := oid.MarshalBinary()
+		if err != nil {
+			return nil, errgo.Mask(err)
+		}
+		buffer.Write(oidBytes)
+	case VariableTypeIPAddress:
+		ip := v.Value.(net.IP)
+		octetString := &OctetString{Text: string(ip)}
+		octetStringBytes, err := octetString.MarshalBinary()
+		if err != nil {
+			return nil, errgo.Mask(err)
+		}
+		buffer.Write(octetStringBytes)
+	case VariableTypeCounter32, VariableTypeGauge32:
+		value := v.Value.(uint32)
+		binary.Write(buffer, binary.LittleEndian, &value)
+	case VariableTypeTimeTicks:
+		value := uint32(v.Value.(time.Duration).Seconds() * 100)
+		binary.Write(buffer, binary.LittleEndian, &value)
+	case VariableTypeOpaque:
+		octetString := &OctetString{Text: string(v.Value.([]byte))}
+		octetStringBytes, err := octetString.MarshalBinary()
+		if err != nil {
+			return nil, errgo.Mask(err)
+		}
+		buffer.Write(octetStringBytes)
+	case VariableTypeCounter64:
+		value := v.Value.(uint64)
+		binary.Write(buffer, binary.LittleEndian, &value)
 	default:
-		return []byte{}, errgo.Newf("unhandled variable type %s", v.Type)
+		return nil, errgo.Newf("unhandled variable type %s", v.Type)
 	}
 
 	return buffer.Bytes(), nil
@@ -76,14 +113,56 @@ func (v *Variable) UnmarshalBinary(data []byte) error {
 	offset += v.Name.ByteSize()
 
 	switch v.Type {
+	case VariableTypeInteger:
+		value := int32(0)
+		if err := binary.Read(buffer, binary.LittleEndian, &value); err != nil {
+			return errgo.Mask(err)
+		}
+		v.Value = value
 	case VariableTypeOctetString:
 		octetString := &OctetString{}
 		if err := octetString.UnmarshalBinary(data[offset:]); err != nil {
 			return errgo.Mask(err)
 		}
 		v.Value = octetString.Text
-	case VariableTypeNull:
+	case VariableTypeNull, VariableTypeNoSuchObject, VariableTypeNoSuchInstance:
 		v.Value = nil
+	case VariableTypeObjectIdentifier:
+		oid := &ObjectIdentifier{}
+		if err := oid.UnmarshalBinary(data[offset:]); err != nil {
+			return errgo.Mask(err)
+		}
+		v.Value = oid.GetIdentifier()
+	case VariableTypeIPAddress:
+		octetString := &OctetString{}
+		if err := octetString.UnmarshalBinary(data[offset:]); err != nil {
+			return errgo.Mask(err)
+		}
+		v.Value = net.IP(octetString.Text)
+	case VariableTypeCounter32, VariableTypeGauge32:
+		value := uint32(0)
+		if err := binary.Read(buffer, binary.LittleEndian, &value); err != nil {
+			return errgo.Mask(err)
+		}
+		v.Value = value
+	case VariableTypeTimeTicks:
+		value := uint32(0)
+		if err := binary.Read(buffer, binary.LittleEndian, &value); err != nil {
+			return errgo.Mask(err)
+		}
+		v.Value = time.Duration(value) * time.Second / 100
+	case VariableTypeOpaque:
+		octetString := &OctetString{}
+		if err := octetString.UnmarshalBinary(data[offset:]); err != nil {
+			return errgo.Mask(err)
+		}
+		v.Value = []byte(octetString.Text)
+	case VariableTypeCounter64:
+		value := uint64(0)
+		if err := binary.Read(buffer, binary.LittleEndian, &value); err != nil {
+			return errgo.Mask(err)
+		}
+		v.Value = value
 	default:
 		return errgo.Newf("unhandled variable type %s", v.Type)
 	}

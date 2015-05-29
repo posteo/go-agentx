@@ -11,6 +11,8 @@ import (
 
 // Session defines an agentx session.
 type Session struct {
+	GetHandler func(string) (pdu.VariableType, interface{}, error)
+
 	client    *Client
 	sessionID uint32
 	timeout   time.Duration
@@ -30,13 +32,10 @@ func (s *Session) Register(priority byte, rootOID string) error {
 	requestPacket.Subtree.SetIdentifier(rootOID)
 	request := &pdu.HeaderPacket{Header: &pdu.Header{}, Packet: requestPacket}
 
-	log.Printf("register request: %v", request)
 	response := s.request(request)
 	if err := checkError(response); err != nil {
 		return errgo.Mask(err)
 	}
-	log.Printf("register response: %v", response)
-
 	return nil
 }
 
@@ -46,13 +45,10 @@ func (s *Session) AllocateIndex(oid string) error {
 	requestPacket.Variables.Add(pdu.VariableTypeOctetString, "oid", "test")
 	request := &pdu.HeaderPacket{Header: &pdu.Header{}, Packet: requestPacket}
 
-	log.Printf("allocate index request: %v", request)
 	response := s.request(request)
 	if err := checkError(response); err != nil {
 		return errgo.Mask(err)
 	}
-	log.Printf("allocate index response: %v", response)
-
 	return nil
 }
 
@@ -95,10 +91,20 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 		responseHeader.TransactionID = request.Header.TransactionID
 		responseHeader.PacketID = request.Header.PacketID
 		responsePacket := &pdu.Response{}
-		responsePacket.Variables.Add(pdu.VariableTypeOctetString, requestPacket.GetOID(), "test value")
-		response := &pdu.HeaderPacket{Header: responseHeader, Packet: responsePacket}
 
-		return response
+		if s.GetHandler == nil {
+			log.Printf("warning: no get handler for session specified")
+			responsePacket.Variables.Add(pdu.VariableTypeNull, requestPacket.GetOID(), nil)
+		} else {
+			variableType, value, err := s.GetHandler(requestPacket.GetOID())
+			if err != nil {
+				log.Printf("error while handling packet: %s", errgo.Details(err))
+				responsePacket.Error = pdu.ErrorProcessing
+			}
+			responsePacket.Variables.Add(variableType, requestPacket.GetOID(), value)
+		}
+
+		return &pdu.HeaderPacket{Header: responseHeader, Packet: responsePacket}
 	default:
 		log.Printf("cannot handle unrequested packet: %v", request)
 	}

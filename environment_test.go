@@ -24,7 +24,6 @@ func TestMain(m *testing.M) {
 		Timeout: 60 * time.Second,
 		NameOID: "1.3.6.1.4.1.8072",
 		Name:    "test client",
-		Debug:   true,
 	}
 
 	if err := e.client.Open(); err != nil {
