@@ -39,10 +39,10 @@ func (s *Session) Register(priority byte, rootOID string) error {
 	return nil
 }
 
-// AllocateIndex xyz
+// AllocateIndex allocates an index at the provided oid on the master agent.
 func (s *Session) AllocateIndex(oid string) error {
 	requestPacket := &pdu.AllocateIndex{}
-	requestPacket.Variables.Add(pdu.VariableTypeOctetString, "oid", "test")
+	requestPacket.Variables.Add(pdu.VariableTypeOctetString, oid, "index")
 	request := &pdu.HeaderPacket{Header: &pdu.Header{}, Packet: requestPacket}
 
 	response := s.request(request)
