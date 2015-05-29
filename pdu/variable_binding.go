@@ -45,6 +45,8 @@ func (v *VariableBinding) MarshalBinary() ([]byte, error) {
 			return []byte{}, errgo.Mask(err)
 		}
 		buffer.Write(octetStringBytes)
+	case VariableTypeNull:
+
 	default:
 		return []byte{}, errgo.Newf("unhandled variable type %s", v.Type)
 	}
@@ -73,6 +75,8 @@ func (v *VariableBinding) UnmarshalBinary(data []byte) error {
 			return errgo.Mask(err)
 		}
 		v.Value = octetString.Text
+	case VariableTypeNull:
+		v.Value = nil
 	default:
 		return errgo.Newf("unhandled variable type %s", v.Type)
 	}

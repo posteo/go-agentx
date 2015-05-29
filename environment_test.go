@@ -22,8 +22,9 @@ func TestMain(m *testing.M) {
 		Net:     "tcp",
 		Address: "localhost:705",
 		Timeout: 60 * time.Second,
-		RootOID: "1.3.6.1.4.1.8072",
-		Name:    "test",
+		NameOID: "1.3.6.1.4.1.8072",
+		Name:    "test client",
+		RootOID: "1.3.6.1.4.1.8072.2",
 	}
 
 	if err := e.client.Open(); err != nil {
