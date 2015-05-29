@@ -17,11 +17,11 @@ type Client struct {
 	Timeout time.Duration
 	NameOID string
 	Name    string
-	RootOID string
 	Debug   bool
 
 	connection  net.Conn
 	requestChan chan *request
+	sessions    map[uint32]*Session
 }
 
 // Open sets up the client.
@@ -31,11 +31,15 @@ func (c *Client) Open() error {
 		return errgo.Mask(err)
 	}
 	c.connection = connection
+	c.sessions = make(map[uint32]*Session)
 
 	writer := bufio.NewWriter(c.connection)
 	tx := make(chan *pdu.HeaderPacket)
 	go func() {
 		for headerPacket := range tx {
+			if c.Debug {
+				log.Printf("out %v", headerPacket)
+			}
 			headerPacketBytes, err := headerPacket.MarshalBinary()
 			if err != nil {
 				panic(err)
@@ -73,6 +77,8 @@ func (c *Client) Open() error {
 			switch header.Type {
 			case pdu.TypeResponse:
 				packet = &pdu.Response{}
+			case pdu.TypeGet:
+				packet = &pdu.Get{}
 			default:
 				log.Printf("unhandled packet of type %s", header.Type)
 				continue
@@ -90,7 +96,12 @@ func (c *Client) Open() error {
 				panic(err)
 			}
 
-			rx <- &pdu.HeaderPacket{Header: header, Packet: packet}
+			headerPacket := &pdu.HeaderPacket{Header: header, Packet: packet}
+			if c.Debug {
+				log.Printf("in %v", headerPacket)
+			}
+
+			rx <- headerPacket
 		}
 	}()
 
@@ -108,11 +119,18 @@ func (c *Client) Open() error {
 
 				tx <- request.headerPacket
 			case headerPacket := <-rx:
-				responseChan, ok := responseChans[headerPacket.Header.PacketID]
+				packetID := headerPacket.Header.PacketID
+				responseChan, ok := responseChans[packetID]
 				if ok {
 					responseChan <- headerPacket
+					delete(responseChans, packetID)
 				} else {
-					log.Printf("got unrequested: %v", headerPacket)
+					session, ok := c.sessions[headerPacket.Header.SessionID]
+					if ok {
+						tx <- session.handle(headerPacket)
+					} else {
+						log.Printf("got without session: %v", headerPacket)
+					}
 				}
 			}
 		}
@@ -138,9 +156,7 @@ func (c *Client) Session() (*Session, error) {
 	if err := s.open(c.NameOID, c.Name); err != nil {
 		return nil, errgo.Mask(err)
 	}
-	if err := s.register(c.RootOID); err != nil {
-		return nil, errgo.Mask(err)
-	}
+	c.sessions[s.ID()] = s
 
 	return s, nil
 }

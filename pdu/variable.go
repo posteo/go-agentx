@@ -7,15 +7,22 @@ import (
 	"github.com/juju/errgo"
 )
 
-// VariableBinding defines the pdu varbind packet.
-type VariableBinding struct {
+// Variable defines the pdu varbind packet.
+type Variable struct {
 	Type  VariableType
 	Name  ObjectIdentifier
 	Value interface{}
 }
 
+// Set sets the variable.
+func (v *Variable) Set(t VariableType, oid string, value interface{}) {
+	v.Type = t
+	v.Name.SetIdentifier(oid)
+	v.Value = value
+}
+
 // ByteSize returns the number of bytes, the binding would need in the encoded version.
-func (v *VariableBinding) ByteSize() int {
+func (v *Variable) ByteSize() int {
 	bytes, err := v.MarshalBinary()
 	if err != nil {
 		panic(err)
@@ -24,7 +31,7 @@ func (v *VariableBinding) ByteSize() int {
 }
 
 // MarshalBinary returns the pdu packet as a slice of bytes.
-func (v *VariableBinding) MarshalBinary() ([]byte, error) {
+func (v *Variable) MarshalBinary() ([]byte, error) {
 	buffer := &bytes.Buffer{}
 
 	binary.Write(buffer, binary.LittleEndian, &v.Type)
@@ -55,7 +62,7 @@ func (v *VariableBinding) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary sets the packet structure from the provided slice of bytes.
-func (v *VariableBinding) UnmarshalBinary(data []byte) error {
+func (v *Variable) UnmarshalBinary(data []byte) error {
 	buffer := bytes.NewBuffer(data)
 
 	if err := binary.Read(buffer, binary.LittleEndian, &v.Type); err != nil {

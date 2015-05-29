@@ -13,11 +13,29 @@ import (
 // ObjectIdentifier defines the pdu object identifier packet.
 type ObjectIdentifier struct {
 	Prefix         byte
+	Include        byte
 	Subidentifiers []uint32
 }
 
-// SetByOID set the subidentifiers by the provided oid string.
-func (o *ObjectIdentifier) SetByOID(value string) error {
+// SetInclude sets the include field.
+func (o *ObjectIdentifier) SetInclude(value bool) {
+	if value {
+		o.Include = 0x01
+	} else {
+		o.Include = 0x00
+	}
+}
+
+// GetInclude returns true if the include field ist set, false otherwise.
+func (o *ObjectIdentifier) GetInclude() bool {
+	if o.Include == 0x00 {
+		return false
+	}
+	return true
+}
+
+// SetIdentifier set the subidentifiers by the provided oid string.
+func (o *ObjectIdentifier) SetIdentifier(value string) error {
 	parts := strings.Split(value, ".")
 	o.Subidentifiers = make([]uint32, 0)
 	for _, part := range parts {
@@ -30,6 +48,15 @@ func (o *ObjectIdentifier) SetByOID(value string) error {
 	return nil
 }
 
+// GetIdentifier returns the identifier as an oid string.
+func (o *ObjectIdentifier) GetIdentifier() string {
+	var parts []string
+	for _, subidentifier := range o.Subidentifiers {
+		parts = append(parts, fmt.Sprintf("%d", subidentifier))
+	}
+	return strings.Join(parts, ".")
+}
+
 // ByteSize returns the number of bytes, the binding would need in the encoded version.
 func (o *ObjectIdentifier) ByteSize() int {
 	return 4 + len(o.Subidentifiers)*4
@@ -37,7 +64,7 @@ func (o *ObjectIdentifier) ByteSize() int {
 
 // MarshalBinary returns the pdu packet as a slice of bytes.
 func (o *ObjectIdentifier) MarshalBinary() ([]byte, error) {
-	buffer := bytes.NewBuffer([]byte{byte(len(o.Subidentifiers)), o.Prefix, 0x00, 0x00})
+	buffer := bytes.NewBuffer([]byte{byte(len(o.Subidentifiers)), o.Prefix, o.Include, 0x00})
 
 	for _, subidentifier := range o.Subidentifiers {
 		if err := binary.Write(buffer, binary.LittleEndian, &subidentifier); err != nil {
@@ -52,6 +79,7 @@ func (o *ObjectIdentifier) MarshalBinary() ([]byte, error) {
 func (o *ObjectIdentifier) UnmarshalBinary(data []byte) error {
 	count := data[0]
 	o.Prefix = data[1]
+	o.Include = data[2]
 
 	o.Subidentifiers = make([]uint32, 0)
 	buffer := bytes.NewBuffer(data[4:])
@@ -67,9 +95,5 @@ func (o *ObjectIdentifier) UnmarshalBinary(data []byte) error {
 }
 
 func (o ObjectIdentifier) String() string {
-	result := ""
-	for _, subidentifier := range o.Subidentifiers {
-		result += fmt.Sprintf(".%d", subidentifier)
-	}
-	return fmt.Sprintf("%s (%d)", result, o.Prefix)
+	return o.GetIdentifier()
 }
