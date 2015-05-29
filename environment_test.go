@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/juju/errgo"
 	"github.com/posteo/go-agentx"
+	"gopkg.in/errgo.v1"
 )
 
 type environment struct {

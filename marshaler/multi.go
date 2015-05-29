@@ -3,7 +3,7 @@ package marshaler
 import (
 	"encoding"
 
-	"github.com/juju/errgo"
+	"gopkg.in/errgo.v1"
 )
 
 // Multi defines a binary marshaler that marshals all child marshalers

@@ -1,6 +1,6 @@
 package pdu
 
-import "github.com/juju/errgo"
+import "gopkg.in/errgo.v1"
 
 // Variables defines a list of variable bindings.
 type Variables []Variable

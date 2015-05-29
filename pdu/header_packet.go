@@ -3,7 +3,7 @@ package pdu
 import (
 	"fmt"
 
-	"github.com/juju/errgo"
+	"gopkg.in/errgo.v1"
 )
 
 // HeaderPacket defines a container structure for a header and a packet.

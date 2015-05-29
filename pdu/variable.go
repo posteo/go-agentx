@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/juju/errgo"
+	"gopkg.in/errgo.v1"
 )
 
 // Variable defines the pdu varbind packet.

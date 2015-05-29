@@ -1,8 +1,8 @@
 package pdu
 
 import (
-	"github.com/juju/errgo"
 	"github.com/posteo/go-agentx/marshaler"
+	"gopkg.in/errgo.v1"
 )
 
 // Register defines the pdu register packet.

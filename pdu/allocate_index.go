@@ -1,7 +1,5 @@
 package pdu
 
-import "github.com/juju/errgo"
-
 // AllocateIndex defiens the pdu allocate index packet.
 type AllocateIndex struct {
 	Variables Variables
@@ -16,7 +14,7 @@ func (ai *AllocateIndex) Type() Type {
 func (ai *AllocateIndex) MarshalBinary() ([]byte, error) {
 	data, err := ai.Variables.MarshalBinary()
 	if err != nil {
-		return nil, errgo.Mask(err)
+		return nil, err
 	}
 	return data, nil
 }

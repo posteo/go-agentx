@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/juju/errgo"
+	"gopkg.in/errgo.v1"
 )
 
 func AssertNoError(tb testing.TB, err error) {

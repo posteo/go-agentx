@@ -6,8 +6,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/juju/errgo"
 	"github.com/posteo/go-agentx/pdu"
+	"gopkg.in/errgo.v1"
 )
 
 // Client defines an agentx client.
@@ -108,6 +108,8 @@ func (c *Client) runReceiver() chan *pdu.HeaderPacket {
 				packet = &pdu.Response{}
 			case pdu.TypeGet:
 				packet = &pdu.Get{}
+			case pdu.TypeGetNext:
+				packet = &pdu.GetNext{}
 			default:
 				log.Printf("unhandled packet of type %s", header.Type)
 				continue

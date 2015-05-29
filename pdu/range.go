@@ -3,13 +3,18 @@ package pdu
 import (
 	"fmt"
 
-	"github.com/juju/errgo"
+	"gopkg.in/errgo.v1"
 )
 
 // Range defines the pdu search range packet.
 type Range struct {
 	From ObjectIdentifier
 	To   ObjectIdentifier
+}
+
+// ByteSize returns the number of bytes, the binding would need in the encoded version.
+func (r *Range) ByteSize() int {
+	return r.From.ByteSize() + r.To.ByteSize()
 }
 
 // MarshalBinary returns the pdu packet as a slice of bytes.

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	"github.com/juju/errgo"
+	"gopkg.in/errgo.v1"
 )
 
 const (
@@ -27,18 +27,10 @@ type Header struct {
 func (h *Header) MarshalBinary() ([]byte, error) {
 	buffer := bytes.NewBuffer([]byte{h.Version, byte(h.Type), byte(h.Flags), 0x00})
 
-	if err := binary.Write(buffer, binary.LittleEndian, h.SessionID); err != nil {
-		return []byte{}, errgo.Mask(err)
-	}
-	if err := binary.Write(buffer, binary.LittleEndian, h.TransactionID); err != nil {
-		return []byte{}, errgo.Mask(err)
-	}
-	if err := binary.Write(buffer, binary.LittleEndian, h.PacketID); err != nil {
-		return []byte{}, errgo.Mask(err)
-	}
-	if err := binary.Write(buffer, binary.LittleEndian, h.PayloadLength); err != nil {
-		return []byte{}, errgo.Mask(err)
-	}
+	binary.Write(buffer, binary.LittleEndian, h.SessionID)
+	binary.Write(buffer, binary.LittleEndian, h.TransactionID)
+	binary.Write(buffer, binary.LittleEndian, h.PacketID)
+	binary.Write(buffer, binary.LittleEndian, h.PayloadLength)
 
 	return buffer.Bytes(), nil
 }
@@ -53,18 +45,10 @@ func (h *Header) UnmarshalBinary(data []byte) error {
 
 	buffer := bytes.NewBuffer(data[4:])
 
-	if err := binary.Read(buffer, binary.LittleEndian, &h.SessionID); err != nil {
-		return errgo.Mask(err)
-	}
-	if err := binary.Read(buffer, binary.LittleEndian, &h.TransactionID); err != nil {
-		return errgo.Mask(err)
-	}
-	if err := binary.Read(buffer, binary.LittleEndian, &h.PacketID); err != nil {
-		return errgo.Mask(err)
-	}
-	if err := binary.Read(buffer, binary.LittleEndian, &h.PayloadLength); err != nil {
-		return errgo.Mask(err)
-	}
+	binary.Read(buffer, binary.LittleEndian, &h.SessionID)
+	binary.Read(buffer, binary.LittleEndian, &h.TransactionID)
+	binary.Read(buffer, binary.LittleEndian, &h.PacketID)
+	binary.Read(buffer, binary.LittleEndian, &h.PayloadLength)
 
 	return nil
 }

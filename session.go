@@ -5,13 +5,14 @@ import (
 	"log"
 	"time"
 
-	"github.com/juju/errgo"
 	"github.com/posteo/go-agentx/pdu"
+	"gopkg.in/errgo.v1"
 )
 
 // Session defines an agentx session.
 type Session struct {
-	GetHandler func(string) (pdu.VariableType, interface{}, error)
+	GetHandler     func(string) (*Item, error)
+	GetNextHandler func(string, string) ([]*Item, error)
 
 	client    *Client
 	sessionID uint32
@@ -84,31 +85,54 @@ func (s *Session) request(hp *pdu.HeaderPacket) *pdu.HeaderPacket {
 }
 
 func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
+	responseHeader := &pdu.Header{}
+	responseHeader.SessionID = request.Header.SessionID
+	responseHeader.TransactionID = request.Header.TransactionID
+	responseHeader.PacketID = request.Header.PacketID
+	responsePacket := &pdu.Response{}
+
 	switch requestPacket := request.Packet.(type) {
 	case *pdu.Get:
-		responseHeader := &pdu.Header{}
-		responseHeader.SessionID = request.Header.SessionID
-		responseHeader.TransactionID = request.Header.TransactionID
-		responseHeader.PacketID = request.Header.PacketID
-		responsePacket := &pdu.Response{}
-
 		if s.GetHandler == nil {
 			log.Printf("warning: no get handler for session specified")
 			responsePacket.Variables.Add(pdu.VariableTypeNull, requestPacket.GetOID(), nil)
 		} else {
-			variableType, value, err := s.GetHandler(requestPacket.GetOID())
+			item, err := s.GetHandler(requestPacket.GetOID())
 			if err != nil {
 				log.Printf("error while handling packet: %s", errgo.Details(err))
 				responsePacket.Error = pdu.ErrorProcessing
 			}
-			responsePacket.Variables.Add(variableType, requestPacket.GetOID(), value)
+			oid := item.OID
+			if oid == "" {
+				oid = requestPacket.GetOID()
+			}
+			responsePacket.Variables.Add(item.Type, oid, item.Value)
 		}
-
-		return &pdu.HeaderPacket{Header: responseHeader, Packet: responsePacket}
+	case *pdu.GetNext:
+		if s.GetHandler == nil {
+			log.Printf("warning: no get next handler for session specified")
+		} else {
+			if len(requestPacket.SearchRanges) < 1 {
+				log.Printf("expected at least one search ranges")
+				responsePacket.Error = pdu.ErrorProcessing
+			} else {
+				sr := requestPacket.SearchRanges[0]
+				items, err := s.GetNextHandler(sr.From.GetIdentifier(), sr.To.GetIdentifier())
+				if err != nil {
+					log.Printf("error while handling packet: %s", errgo.Details(err))
+					responsePacket.Error = pdu.ErrorProcessing
+				}
+				for _, item := range items {
+					responsePacket.Variables.Add(item.Type, item.OID, item.Value)
+				}
+			}
+		}
 	default:
 		log.Printf("cannot handle unrequested packet: %v", request)
+		responsePacket.Error = pdu.ErrorProcessing
 	}
-	return nil
+
+	return &pdu.HeaderPacket{Header: responseHeader, Packet: responsePacket}
 }
 
 func checkError(hp *pdu.HeaderPacket) error {

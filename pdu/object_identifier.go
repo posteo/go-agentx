@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/juju/errgo"
+	"gopkg.in/errgo.v1"
 )
 
 // ObjectIdentifier defines the pdu object identifier packet.
@@ -80,9 +80,7 @@ func (o *ObjectIdentifier) MarshalBinary() ([]byte, error) {
 	buffer := bytes.NewBuffer([]byte{byte(len(o.Subidentifiers)), o.Prefix, o.Include, 0x00})
 
 	for _, subidentifier := range o.Subidentifiers {
-		if err := binary.Write(buffer, binary.LittleEndian, &subidentifier); err != nil {
-			return []byte{}, errgo.Mask(err)
-		}
+		binary.Write(buffer, binary.LittleEndian, &subidentifier)
 	}
 
 	return buffer.Bytes(), nil

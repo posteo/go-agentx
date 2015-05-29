@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/juju/errgo"
+	"gopkg.in/errgo.v1"
 )
 
 // Response defines the pdu response packet.
@@ -26,22 +26,15 @@ func (r *Response) MarshalBinary() ([]byte, error) {
 	buffer := &bytes.Buffer{}
 
 	upTime := uint32(r.UpTime.Seconds() / 100)
-	if err := binary.Write(buffer, binary.LittleEndian, &upTime); err != nil {
-		return nil, errgo.Mask(err)
-	}
-	if err := binary.Write(buffer, binary.LittleEndian, &r.Error); err != nil {
-		return nil, errgo.Mask(err)
-	}
-	if err := binary.Write(buffer, binary.LittleEndian, &r.Index); err != nil {
-		return nil, errgo.Mask(err)
-	}
+	binary.Write(buffer, binary.LittleEndian, &upTime)
+	binary.Write(buffer, binary.LittleEndian, &r.Error)
+	binary.Write(buffer, binary.LittleEndian, &r.Index)
+
 	vBytes, err := r.Variables.MarshalBinary()
 	if err != nil {
 		return nil, errgo.Mask(err)
 	}
-	if _, err := buffer.Write(vBytes); err != nil {
-		return nil, errgo.Mask(err)
-	}
+	buffer.Write(vBytes)
 
 	return buffer.Bytes(), nil
 }

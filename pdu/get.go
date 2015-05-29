@@ -1,7 +1,5 @@
 package pdu
 
-import "github.com/juju/errgo"
-
 // Get defines the pdu get packet.
 type Get struct {
 	SearchRange Range
@@ -25,7 +23,7 @@ func (g *Get) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary sets the packet structure from the provided slice of bytes.
 func (g *Get) UnmarshalBinary(data []byte) error {
 	if err := g.SearchRange.UnmarshalBinary(data); err != nil {
-		return errgo.Mask(err)
+		return err
 	}
 	return nil
 }
