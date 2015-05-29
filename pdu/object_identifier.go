@@ -37,6 +37,15 @@ func (o *ObjectIdentifier) GetInclude() bool {
 // SetIdentifier set the subidentifiers by the provided oid string.
 func (o *ObjectIdentifier) SetIdentifier(value string) error {
 	parts := strings.Split(value, ".")
+
+	if len(parts) > 0 && strings.HasPrefix(parts[0], "-") {
+		prefix, err := strconv.Atoi(parts[0][1:])
+		if err != nil {
+			return errgo.Mask(err)
+		}
+		o.Prefix = byte(prefix)
+	}
+
 	o.Subidentifiers = make([]uint32, 0)
 	for _, part := range parts {
 		subidentifier, err := strconv.Atoi(part)
@@ -45,12 +54,16 @@ func (o *ObjectIdentifier) SetIdentifier(value string) error {
 		}
 		o.Subidentifiers = append(o.Subidentifiers, uint32(subidentifier))
 	}
+
 	return nil
 }
 
 // GetIdentifier returns the identifier as an oid string.
 func (o *ObjectIdentifier) GetIdentifier() string {
 	var parts []string
+	if o.Prefix != 0x00 {
+		parts = append(parts, fmt.Sprintf("-%d", o.Prefix))
+	}
 	for _, subidentifier := range o.Subidentifiers {
 		parts = append(parts, fmt.Sprintf("%d", subidentifier))
 	}

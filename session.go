@@ -88,14 +88,14 @@ func (s *Session) request(hp *pdu.HeaderPacket) *pdu.HeaderPacket {
 }
 
 func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
-	switch request.Packet.(type) {
+	switch requestPacket := request.Packet.(type) {
 	case *pdu.Get:
 		responseHeader := &pdu.Header{}
 		responseHeader.SessionID = request.Header.SessionID
 		responseHeader.TransactionID = request.Header.TransactionID
 		responseHeader.PacketID = request.Header.PacketID
 		responsePacket := &pdu.Response{}
-		responsePacket.Variables.Add(pdu.VariableTypeOctetString, "1.3.6.1.4.1.8072.1", "test value")
+		responsePacket.Variables.Add(pdu.VariableTypeOctetString, requestPacket.GetOID(), "test value")
 		response := &pdu.HeaderPacket{Header: responseHeader, Packet: responsePacket}
 
 		return response
