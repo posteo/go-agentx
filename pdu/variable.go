@@ -57,7 +57,7 @@ func (v *Variable) MarshalBinary() ([]byte, error) {
 			return nil, errgo.Mask(err)
 		}
 		buffer.Write(octetStringBytes)
-	case VariableTypeNull, VariableTypeNoSuchObject, VariableTypeNoSuchInstance:
+	case VariableTypeNull, VariableTypeNoSuchObject, VariableTypeNoSuchInstance, VariableTypeEndOfMIBView:
 		break
 	case VariableTypeObjectIdentifier:
 		oid := &ObjectIdentifier{}
@@ -125,7 +125,7 @@ func (v *Variable) UnmarshalBinary(data []byte) error {
 			return errgo.Mask(err)
 		}
 		v.Value = octetString.Text
-	case VariableTypeNull, VariableTypeNoSuchObject, VariableTypeNoSuchInstance:
+	case VariableTypeNull, VariableTypeNoSuchObject, VariableTypeNoSuchInstance, VariableTypeEndOfMIBView:
 		v.Value = nil
 	case VariableTypeObjectIdentifier:
 		oid := &ObjectIdentifier{}

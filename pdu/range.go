@@ -35,5 +35,17 @@ func (r *Range) UnmarshalBinary(data []byte) error {
 }
 
 func (r Range) String() string {
-	return fmt.Sprintf("RANGE FROM %v TO %v", r.From, r.To)
+	result := ""
+	if r.From.GetInclude() {
+		result += "["
+	} else {
+		result += "("
+	}
+	result += fmt.Sprintf("%v, %v", r.From, r.To)
+	if r.To.GetInclude() {
+		result += "]"
+	} else {
+		result += ")"
+	}
+	return result
 }

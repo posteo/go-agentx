@@ -12,7 +12,7 @@ import (
 // Session defines an agentx session.
 type Session struct {
 	GetHandler     func(string) (*Item, error)
-	GetNextHandler func(string, string) ([]*Item, error)
+	GetNextHandler func(string, string) (*Item, error)
 
 	client    *Client
 	sessionID uint32
@@ -112,17 +112,16 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 		if s.GetHandler == nil {
 			log.Printf("warning: no get next handler for session specified")
 		} else {
-			if len(requestPacket.SearchRanges) < 1 {
-				log.Printf("expected at least one search ranges")
-				responsePacket.Error = pdu.ErrorProcessing
-			} else {
-				sr := requestPacket.SearchRanges[0]
-				items, err := s.GetNextHandler(sr.From.GetIdentifier(), sr.To.GetIdentifier())
+			for _, sr := range requestPacket.SearchRanges {
+				item, err := s.GetNextHandler(sr.From.GetIdentifier(), sr.To.GetIdentifier())
 				if err != nil {
 					log.Printf("error while handling packet: %s", errgo.Details(err))
 					responsePacket.Error = pdu.ErrorProcessing
 				}
-				for _, item := range items {
+
+				if item == nil {
+					responsePacket.Variables.Add(pdu.VariableTypeEndOfMIBView, sr.From.GetIdentifier(), nil)
+				} else {
 					responsePacket.Variables.Add(item.Type, item.OID, item.Value)
 				}
 			}
