@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"log"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/posteo/go-agentx/pdu"
@@ -94,6 +95,9 @@ func (c *Client) runReceiver() chan *pdu.HeaderPacket {
 		for {
 			headerBytes := make([]byte, pdu.HeaderSize)
 			if _, err := reader.Read(headerBytes); err != nil {
+				if opErr, ok := err.(*net.OpError); ok && strings.HasSuffix(opErr.Error(), "use of closed network connection") {
+					return
+				}
 				panic(err)
 			}
 
