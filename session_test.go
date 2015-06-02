@@ -1,6 +1,11 @@
 package agentx_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/posteo/go-agentx"
+	"github.com/posteo/go-agentx/pdu"
+)
 
 func TestSessionOpen(t *testing.T) {
 	session, err := e.client.Session()
@@ -18,22 +23,30 @@ func TestSessionClose(t *testing.T) {
 	AssertNoError(t, err)
 }
 
-func TestSessionRegister(t *testing.T) {
+func TestSessionRegistration(t *testing.T) {
 	session, err := e.client.Session()
 	AssertNoError(t, err)
 	defer session.Close()
 
-	err = session.Register(127, "1.3.6.1.4.1.8072")
-	AssertNoError(t, err)
+	AssertNoError(t,
+		session.Register(127, "1.3.6.1.4.1.8072"))
+
+	AssertNoError(t,
+		session.Unregister(127, "1.3.6.1.4.1.8072"))
 }
 
-func TestSessionAllocateIndex(t *testing.T) {
+func TestSessionIndexAllocation(t *testing.T) {
 	session, err := e.client.Session()
 	AssertNoError(t, err)
 	defer session.Close()
-	err = session.Register(127, "1.3.6.1.4.1.8072")
-	AssertNoError(t, err)
 
-	err = session.AllocateIndex("1.3.6.1.4.1.8072.1")
-	AssertNoError(t, err)
+	AssertNoError(t,
+		session.Register(127, "1.3.6.1.4.1.8072"))
+	defer session.Unregister(127, "1.3.6.1.4.1.8072")
+
+	AssertNoError(t,
+		session.AllocateIndex(&agentx.Item{OID: "1.3.6.1.4.1.8072.3.1", Type: pdu.VariableTypeInteger, Value: int32(123)}))
+
+	AssertNoError(t,
+		session.DeallocateIndex(&agentx.Item{OID: "1.3.6.1.4.1.8072.3.1", Type: pdu.VariableTypeInteger, Value: int32(123)}))
 }

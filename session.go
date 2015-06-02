@@ -40,10 +40,42 @@ func (s *Session) Register(priority byte, rootOID string) error {
 	return nil
 }
 
-// AllocateIndex allocates an index at the provided oid on the master agent.
-func (s *Session) AllocateIndex(oid string) error {
+// Unregister removes the registration for the provided subtree.
+func (s *Session) Unregister(priority byte, rootOID string) error {
+	requestPacket := &pdu.Unregister{}
+	requestPacket.Timeout.Duration = s.timeout
+	requestPacket.Timeout.Priority = priority
+	requestPacket.Subtree.SetIdentifier(rootOID)
+	request := &pdu.HeaderPacket{Header: &pdu.Header{}, Packet: requestPacket}
+
+	response := s.request(request)
+	if err := checkError(response); err != nil {
+		return errgo.Mask(err)
+	}
+	return nil
+}
+
+// AllocateIndex allocates an index with the provided items.
+func (s *Session) AllocateIndex(items ...*Item) error {
 	requestPacket := &pdu.AllocateIndex{}
-	requestPacket.Variables.Add(pdu.VariableTypeOctetString, oid, "index")
+	for _, item := range items {
+		requestPacket.Variables.Add(item.Type, item.OID, item.Value)
+	}
+	request := &pdu.HeaderPacket{Header: &pdu.Header{}, Packet: requestPacket}
+
+	response := s.request(request)
+	if err := checkError(response); err != nil {
+		return errgo.Mask(err)
+	}
+	return nil
+}
+
+// DeallocateIndex deallocates an index with the provided items.
+func (s *Session) DeallocateIndex(items ...*Item) error {
+	requestPacket := &pdu.DeallocateIndex{}
+	for _, item := range items {
+		requestPacket.Variables.Add(item.Type, item.OID, item.Value)
+	}
 	request := &pdu.HeaderPacket{Header: &pdu.Header{}, Packet: requestPacket}
 
 	response := s.request(request)
