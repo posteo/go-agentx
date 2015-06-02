@@ -31,7 +31,8 @@ func TestSessionAllocateIndex(t *testing.T) {
 	session, err := e.client.Session()
 	AssertNoError(t, err)
 	defer session.Close()
-	session.Register(127, "1.3.6.1.4.1.8072")
+	err = session.Register(127, "1.3.6.1.4.1.8072")
+	AssertNoError(t, err)
 
 	err = session.AllocateIndex("1.3.6.1.4.1.8072.1")
 	AssertNoError(t, err)

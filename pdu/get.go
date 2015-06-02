@@ -10,6 +10,11 @@ func (g *Get) GetOID() string {
 	return g.SearchRange.From.GetIdentifier()
 }
 
+// SetOID sets the provided oid.
+func (g *Get) SetOID(oid string) {
+	g.SearchRange.From.SetIdentifier(oid)
+}
+
 // Type returns the pdu packet type.
 func (g *Get) Type() Type {
 	return TypeGet

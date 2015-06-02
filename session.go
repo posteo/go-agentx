@@ -102,14 +102,18 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 				log.Printf("error while handling packet: %s", errgo.Details(err))
 				responsePacket.Error = pdu.ErrorProcessing
 			}
-			oid := item.OID
-			if oid == "" {
-				oid = requestPacket.GetOID()
+			if item == nil {
+				responsePacket.Variables.Add(pdu.VariableTypeNoSuchObject, requestPacket.GetOID(), nil)
+			} else {
+				oid := item.OID
+				if oid == "" {
+					oid = requestPacket.GetOID()
+				}
+				responsePacket.Variables.Add(item.Type, oid, item.Value)
 			}
-			responsePacket.Variables.Add(item.Type, oid, item.Value)
 		}
 	case *pdu.GetNext:
-		if s.GetHandler == nil {
+		if s.GetNextHandler == nil {
 			log.Printf("warning: no get next handler for session specified")
 		} else {
 			for _, sr := range requestPacket.SearchRanges {

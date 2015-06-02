@@ -12,7 +12,7 @@ import (
 
 // ObjectIdentifier defines the pdu object identifier packet.
 type ObjectIdentifier struct {
-	Prefix         byte
+	Prefix         uint8
 	Include        byte
 	Subidentifiers []uint32
 }
@@ -37,16 +37,17 @@ func (o *ObjectIdentifier) GetInclude() bool {
 // SetIdentifier set the subidentifiers by the provided oid string.
 func (o *ObjectIdentifier) SetIdentifier(value string) error {
 	parts := strings.Split(value, ".")
+	o.Subidentifiers = make([]uint32, 0)
 
-	if len(parts) > 0 && strings.HasPrefix(parts[0], "-") {
-		prefix, err := strconv.Atoi(parts[0][1:])
+	if len(parts) > 4 && parts[0] == "1" && parts[1] == "3" && parts[2] == "6" && parts[3] == "1" {
+		prefix, err := strconv.Atoi(parts[4])
 		if err != nil {
 			return errgo.Mask(err)
 		}
-		o.Prefix = byte(prefix)
+		o.Subidentifiers = append(o.Subidentifiers, uint32(1), uint32(3), uint32(6), uint32(1), uint32(prefix))
+		parts = parts[5:]
 	}
 
-	o.Subidentifiers = make([]uint32, 0)
 	for _, part := range parts {
 		subidentifier, err := strconv.Atoi(part)
 		if err != nil {
@@ -61,8 +62,8 @@ func (o *ObjectIdentifier) SetIdentifier(value string) error {
 // GetIdentifier returns the identifier as an oid string.
 func (o *ObjectIdentifier) GetIdentifier() string {
 	var parts []string
-	if o.Prefix != 0x00 {
-		parts = append(parts, fmt.Sprintf("-%d", o.Prefix))
+	if o.Prefix != 0 {
+		parts = append(parts, "1", "3", "6", "1", fmt.Sprintf("%d", o.Prefix))
 	}
 	for _, subidentifier := range o.Subidentifiers {
 		parts = append(parts, fmt.Sprintf("%d", subidentifier))
