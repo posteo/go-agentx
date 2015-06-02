@@ -112,7 +112,6 @@ func (c *Client) runReceiver() chan *pdu.HeaderPacket {
 				packet = &pdu.GetNext{}
 			default:
 				log.Printf("unhandled packet of type %s", header.Type)
-				continue
 			}
 
 			packetBytes := make([]byte, header.PayloadLength)
