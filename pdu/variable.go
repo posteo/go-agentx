@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/posteo/go-agentx/value"
 	"gopkg.in/errgo.v1"
 )
 
@@ -17,9 +18,9 @@ type Variable struct {
 }
 
 // Set sets the variable.
-func (v *Variable) Set(t VariableType, oid string, value interface{}) {
-	v.Type = t
+func (v *Variable) Set(oid value.OID, t VariableType, value interface{}) {
 	v.Name.SetIdentifier(oid)
+	v.Type = t
 	v.Value = value
 }
 
@@ -60,13 +61,18 @@ func (v *Variable) MarshalBinary() ([]byte, error) {
 	case VariableTypeNull, VariableTypeNoSuchObject, VariableTypeNoSuchInstance, VariableTypeEndOfMIBView:
 		break
 	case VariableTypeObjectIdentifier:
-		oid := &ObjectIdentifier{}
-		oid.SetIdentifier(v.Value.(string))
-		oidBytes, err := oid.MarshalBinary()
+		targetOID, err := value.ParseOID(v.Value.(string))
 		if err != nil {
 			return nil, errgo.Mask(err)
 		}
-		buffer.Write(oidBytes)
+
+		oi := &ObjectIdentifier{}
+		oi.SetIdentifier(targetOID)
+		oiBytes, err := oi.MarshalBinary()
+		if err != nil {
+			return nil, errgo.Mask(err)
+		}
+		buffer.Write(oiBytes)
 	case VariableTypeIPAddress:
 		ip := v.Value.(net.IP)
 		octetString := &OctetString{Text: string(ip)}

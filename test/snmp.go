@@ -1,13 +1,10 @@
-package agentx_test
+package test
 
 import (
 	"fmt"
 	"os/exec"
-	"reflect"
 	"strings"
 	"testing"
-
-	"gopkg.in/errgo.v1"
 )
 
 func SNMPGet(tb testing.TB, oid string) string {
@@ -31,22 +28,4 @@ func SNMPGetBulk(tb testing.TB, oid string, nonRepeaters, maxRepetitions int) st
 	err = nil
 	AssertNoError(tb, err)
 	return strings.TrimSpace(string(output))
-}
-
-func AssertNoError(tb testing.TB, err error) {
-	if err != nil {
-		tb.Fatalf(errgo.Details(err))
-	}
-}
-
-func AssertEquals(tb testing.TB, expected, actucal interface{}) {
-	if !reflect.DeepEqual(expected, actucal) {
-		tb.Fatalf("expected %#v, got %#v", expected, actucal)
-	}
-}
-
-func AssertNotEquals(tb testing.TB, expected, actucal interface{}) {
-	if reflect.DeepEqual(expected, actucal) {
-		tb.Fatalf("expected not %#v, got %#v", expected, actucal)
-	}
 }

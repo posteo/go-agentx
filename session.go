@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/posteo/go-agentx/pdu"
+	"github.com/posteo/go-agentx/value"
 	"gopkg.in/errgo.v1"
 )
 
 // Session defines an agentx session.
 type Session struct {
-	GetHandler     func(string) (*Item, error)
-	GetNextHandler func(string, string) (*Item, error)
+	GetHandler     func(value.OID) (value.OID, pdu.VariableType, interface{}, error)
+	GetNextHandler func(value.OID, value.OID) (value.OID, pdu.VariableType, interface{}, error)
 
 	client    *Client
 	sessionID uint32
@@ -26,11 +27,11 @@ func (s *Session) ID() uint32 {
 
 // Register registers the client under the provided rootID with the provided priority
 // on the master agent.
-func (s *Session) Register(priority byte, rootOID string) error {
+func (s *Session) Register(priority byte, baseOID value.OID) error {
 	requestPacket := &pdu.Register{}
 	requestPacket.Timeout.Duration = s.timeout
 	requestPacket.Timeout.Priority = priority
-	requestPacket.Subtree.SetIdentifier(rootOID)
+	requestPacket.Subtree.SetIdentifier(baseOID)
 	request := &pdu.HeaderPacket{Header: &pdu.Header{}, Packet: requestPacket}
 
 	response := s.request(request)
@@ -41,41 +42,11 @@ func (s *Session) Register(priority byte, rootOID string) error {
 }
 
 // Unregister removes the registration for the provided subtree.
-func (s *Session) Unregister(priority byte, rootOID string) error {
+func (s *Session) Unregister(priority byte, baseOID value.OID) error {
 	requestPacket := &pdu.Unregister{}
 	requestPacket.Timeout.Duration = s.timeout
 	requestPacket.Timeout.Priority = priority
-	requestPacket.Subtree.SetIdentifier(rootOID)
-	request := &pdu.HeaderPacket{Header: &pdu.Header{}, Packet: requestPacket}
-
-	response := s.request(request)
-	if err := checkError(response); err != nil {
-		return errgo.Mask(err)
-	}
-	return nil
-}
-
-// AllocateIndex allocates an index with the provided items.
-func (s *Session) AllocateIndex(items ...*Item) error {
-	requestPacket := &pdu.AllocateIndex{}
-	for _, item := range items {
-		requestPacket.Variables.Add(item.Type, item.OID, item.Value)
-	}
-	request := &pdu.HeaderPacket{Header: &pdu.Header{}, Packet: requestPacket}
-
-	response := s.request(request)
-	if err := checkError(response); err != nil {
-		return errgo.Mask(err)
-	}
-	return nil
-}
-
-// DeallocateIndex deallocates an index with the provided items.
-func (s *Session) DeallocateIndex(items ...*Item) error {
-	requestPacket := &pdu.DeallocateIndex{}
-	for _, item := range items {
-		requestPacket.Variables.Add(item.Type, item.OID, item.Value)
-	}
+	requestPacket.Subtree.SetIdentifier(baseOID)
 	request := &pdu.HeaderPacket{Header: &pdu.Header{}, Packet: requestPacket}
 
 	response := s.request(request)
@@ -96,7 +67,7 @@ func (s *Session) Close() error {
 	return nil
 }
 
-func (s *Session) open(nameOID, name string) error {
+func (s *Session) open(nameOID value.OID, name string) error {
 	requestPacket := &pdu.Open{}
 	requestPacket.Timeout.Duration = s.timeout
 	requestPacket.ID.SetIdentifier(nameOID)
@@ -127,21 +98,17 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 	case *pdu.Get:
 		if s.GetHandler == nil {
 			log.Printf("warning: no get handler for session specified")
-			responsePacket.Variables.Add(pdu.VariableTypeNull, requestPacket.GetOID(), nil)
+			responsePacket.Variables.Add(requestPacket.GetOID(), pdu.VariableTypeNull, nil)
 		} else {
-			item, err := s.GetHandler(requestPacket.GetOID())
+			oid, t, v, err := s.GetHandler(requestPacket.GetOID())
 			if err != nil {
 				log.Printf("error while handling packet: %s", errgo.Details(err))
 				responsePacket.Error = pdu.ErrorProcessing
 			}
-			if item == nil {
-				responsePacket.Variables.Add(pdu.VariableTypeNoSuchObject, requestPacket.GetOID(), nil)
+			if oid == nil {
+				responsePacket.Variables.Add(requestPacket.GetOID(), pdu.VariableTypeNoSuchObject, nil)
 			} else {
-				oid := item.OID
-				if oid == "" {
-					oid = requestPacket.GetOID()
-				}
-				responsePacket.Variables.Add(item.Type, oid, item.Value)
+				responsePacket.Variables.Add(oid, t, v)
 			}
 		}
 	case *pdu.GetNext:
@@ -149,16 +116,16 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 			log.Printf("warning: no get next handler for session specified")
 		} else {
 			for _, sr := range requestPacket.SearchRanges {
-				item, err := s.GetNextHandler(sr.From.GetIdentifier(), sr.To.GetIdentifier())
+				oid, t, v, err := s.GetNextHandler(sr.From.GetIdentifier(), sr.To.GetIdentifier())
 				if err != nil {
 					log.Printf("error while handling packet: %s", errgo.Details(err))
 					responsePacket.Error = pdu.ErrorProcessing
 				}
 
-				if item == nil {
-					responsePacket.Variables.Add(pdu.VariableTypeEndOfMIBView, sr.From.GetIdentifier(), nil)
+				if oid == nil {
+					responsePacket.Variables.Add(sr.From.GetIdentifier(), pdu.VariableTypeEndOfMIBView, nil)
 				} else {
-					responsePacket.Variables.Add(item.Type, item.OID, item.Value)
+					responsePacket.Variables.Add(oid, t, v)
 				}
 			}
 		}

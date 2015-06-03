@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/posteo/go-agentx/pdu"
+	"github.com/posteo/go-agentx/value"
 	"gopkg.in/errgo.v1"
 )
 
@@ -16,7 +17,7 @@ type Client struct {
 	Net     string
 	Address string
 	Timeout time.Duration
-	NameOID string
+	NameOID value.OID
 	Name    string
 
 	connection  net.Conn

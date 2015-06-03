@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/posteo/go-agentx"
+	"github.com/posteo/go-agentx/value"
 	"gopkg.in/errgo.v1"
 )
 
@@ -14,7 +15,11 @@ type environment struct {
 	client *agentx.Client
 }
 
-var e *environment
+var (
+	e *environment
+
+	baseOID = value.MustParseOID("1.3.6.1.4.1.8072")
+)
 
 func TestMain(m *testing.M) {
 	e = &environment{}
@@ -22,7 +27,7 @@ func TestMain(m *testing.M) {
 		Net:     "tcp",
 		Address: "localhost:705",
 		Timeout: 60 * time.Second,
-		NameOID: "1.3.6.1.4.1.8072",
+		NameOID: value.MustParseOID("1.3.6.1.4.1.8072"),
 		Name:    "test client",
 	}
 

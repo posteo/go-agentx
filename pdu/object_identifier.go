@@ -3,10 +3,8 @@ package pdu
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
-	"strconv"
-	"strings"
 
+	"github.com/posteo/go-agentx/value"
 	"gopkg.in/errgo.v1"
 )
 
@@ -35,40 +33,24 @@ func (o *ObjectIdentifier) GetInclude() bool {
 }
 
 // SetIdentifier set the subidentifiers by the provided oid string.
-func (o *ObjectIdentifier) SetIdentifier(value string) error {
-	parts := strings.Split(value, ".")
+func (o *ObjectIdentifier) SetIdentifier(oid value.OID) {
 	o.Subidentifiers = make([]uint32, 0)
 
-	if len(parts) > 4 && parts[0] == "1" && parts[1] == "3" && parts[2] == "6" && parts[3] == "1" {
-		prefix, err := strconv.Atoi(parts[4])
-		if err != nil {
-			return errgo.Mask(err)
-		}
-		o.Subidentifiers = append(o.Subidentifiers, uint32(1), uint32(3), uint32(6), uint32(1), uint32(prefix))
-		parts = parts[5:]
+	if len(oid) > 4 && oid[0] == 1 && oid[1] == 3 && oid[2] == 6 && oid[3] == 1 {
+		o.Subidentifiers = append(o.Subidentifiers, uint32(1), uint32(3), uint32(6), uint32(1), uint32(oid[4]))
+		oid = oid[5:]
 	}
 
-	for _, part := range parts {
-		subidentifier, err := strconv.Atoi(part)
-		if err != nil {
-			return errgo.Mask(err)
-		}
-		o.Subidentifiers = append(o.Subidentifiers, uint32(subidentifier))
-	}
-
-	return nil
+	o.Subidentifiers = append(o.Subidentifiers, oid...)
 }
 
 // GetIdentifier returns the identifier as an oid string.
-func (o *ObjectIdentifier) GetIdentifier() string {
-	var parts []string
+func (o *ObjectIdentifier) GetIdentifier() value.OID {
+	var oid value.OID
 	if o.Prefix != 0 {
-		parts = append(parts, "1", "3", "6", "1", fmt.Sprintf("%d", o.Prefix))
+		oid = append(oid, 1, 3, 6, 1, uint32(o.Prefix))
 	}
-	for _, subidentifier := range o.Subidentifiers {
-		parts = append(parts, fmt.Sprintf("%d", subidentifier))
-	}
-	return strings.Join(parts, ".")
+	return append(oid, o.Subidentifiers...)
 }
 
 // ByteSize returns the number of bytes, the binding would need in the encoded version.
@@ -107,5 +89,5 @@ func (o *ObjectIdentifier) UnmarshalBinary(data []byte) error {
 }
 
 func (o ObjectIdentifier) String() string {
-	return o.GetIdentifier()
+	return o.GetIdentifier().String()
 }

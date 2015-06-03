@@ -3,24 +3,25 @@ package agentx_test
 import (
 	"testing"
 
-	"github.com/posteo/go-agentx"
 	"github.com/posteo/go-agentx/pdu"
+	. "github.com/posteo/go-agentx/test"
+	"github.com/posteo/go-agentx/value"
 )
 
 func TestGet(t *testing.T) {
 	session, err := e.client.Session()
 	AssertNoError(t, err)
 	defer session.Close()
-	session.GetHandler = func(oid string) (*agentx.Item, error) {
-		if oid == "1.3.6.1.4.1.8072.3.1" {
-			return &agentx.Item{Type: pdu.VariableTypeOctetString, Value: "test"}, nil
+	session.GetHandler = func(oid value.OID) (value.OID, pdu.VariableType, interface{}, error) {
+		if oid.String() == "1.3.6.1.4.1.8072.3.1" {
+			return oid, pdu.VariableTypeOctetString, "test", nil
 		}
-		return nil, nil
+		return nil, pdu.VariableTypeNoSuchObject, nil, nil
 	}
 
 	AssertNoError(t,
-		session.Register(127, "1.3.6.1.4.1.8072"))
-	defer session.Unregister(127, "1.3.6.1.4.1.8072")
+		session.Register(127, baseOID))
+	defer session.Unregister(127, baseOID)
 
 	AssertEquals(t,
 		".1.3.6.1.4.1.8072.3.1 = STRING: \"test\"",
@@ -35,16 +36,16 @@ func TestGetNext(t *testing.T) {
 	session, err := e.client.Session()
 	AssertNoError(t, err)
 	defer session.Close()
-	session.GetNextHandler = func(from, to string) (*agentx.Item, error) {
-		if from == "1.3.6.1.4.1.8072.3.1" {
-			return &agentx.Item{OID: "1.3.6.1.4.1.8072.3.1", Type: pdu.VariableTypeOctetString, Value: "test"}, nil
+	session.GetNextHandler = func(from, to value.OID) (value.OID, pdu.VariableType, interface{}, error) {
+		if from.String() == "1.3.6.1.4.1.8072.3.1" {
+			return from, pdu.VariableTypeOctetString, "test", nil
 		}
-		return nil, nil
+		return nil, pdu.VariableTypeNoSuchObject, nil, nil
 	}
 
 	AssertNoError(t,
-		session.Register(127, "1.3.6.1.4.1.8072"))
-	defer session.Unregister(127, "1.3.6.1.4.1.8072")
+		session.Register(127, baseOID))
+	defer session.Unregister(127, baseOID)
 
 	AssertEquals(t,
 		".1.3.6.1.4.1.8072.3.1 = STRING: \"test\"",
@@ -55,16 +56,16 @@ func TestGetBulk(t *testing.T) {
 	session, err := e.client.Session()
 	AssertNoError(t, err)
 	defer session.Close()
-	session.GetNextHandler = func(from, to string) (*agentx.Item, error) {
-		if from == "1.3.6.1.4.1.8072.3.1" {
-			return &agentx.Item{OID: "1.3.6.1.4.1.8072.3.1", Type: pdu.VariableTypeOctetString, Value: "test"}, nil
+	session.GetNextHandler = func(from, to value.OID) (value.OID, pdu.VariableType, interface{}, error) {
+		if from.String() == "1.3.6.1.4.1.8072.3.1" {
+			return from, pdu.VariableTypeOctetString, "test", nil
 		}
-		return nil, nil
+		return nil, pdu.VariableTypeNoSuchObject, nil, nil
 	}
 
 	AssertNoError(t,
-		session.Register(127, "1.3.6.1.4.1.8072"))
-	defer session.Unregister(127, "1.3.6.1.4.1.8072")
+		session.Register(127, baseOID))
+	defer session.Unregister(127, baseOID)
 
 	AssertEquals(t,
 		".1.3.6.1.4.1.8072.3.1 = STRING: \"test\"",

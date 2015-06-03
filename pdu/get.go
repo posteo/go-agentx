@@ -1,17 +1,19 @@
 package pdu
 
+import "github.com/posteo/go-agentx/value"
+
 // Get defines the pdu get packet.
 type Get struct {
 	SearchRange Range
 }
 
 // GetOID returns the oid.
-func (g *Get) GetOID() string {
+func (g *Get) GetOID() value.OID {
 	return g.SearchRange.From.GetIdentifier()
 }
 
 // SetOID sets the provided oid.
-func (g *Get) SetOID(oid string) {
+func (g *Get) SetOID(oid value.OID) {
 	g.SearchRange.From.SetIdentifier(oid)
 }
 

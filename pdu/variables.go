@@ -1,14 +1,17 @@
 package pdu
 
-import "gopkg.in/errgo.v1"
+import (
+	"github.com/posteo/go-agentx/value"
+	"gopkg.in/errgo.v1"
+)
 
 // Variables defines a list of variable bindings.
 type Variables []Variable
 
 // Add adds the provided variable.
-func (v *Variables) Add(t VariableType, oid string, value interface{}) {
+func (v *Variables) Add(oid value.OID, t VariableType, value interface{}) {
 	variable := Variable{}
-	variable.Set(t, oid, value)
+	variable.Set(oid, t, value)
 	*v = append(*v, variable)
 }
 
