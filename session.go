@@ -12,8 +12,7 @@ import (
 
 // Session defines an agentx session.
 type Session struct {
-	GetHandler     func(value.OID) (value.OID, pdu.VariableType, interface{}, error)
-	GetNextHandler func(value.OID, value.OID) (value.OID, pdu.VariableType, interface{}, error)
+	Handler Handler
 
 	client    *Client
 	sessionID uint32
@@ -96,11 +95,11 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 
 	switch requestPacket := request.Packet.(type) {
 	case *pdu.Get:
-		if s.GetHandler == nil {
-			log.Printf("warning: no get handler for session specified")
+		if s.Handler == nil {
+			log.Printf("warning: no handler for session specified")
 			responsePacket.Variables.Add(requestPacket.GetOID(), pdu.VariableTypeNull, nil)
 		} else {
-			oid, t, v, err := s.GetHandler(requestPacket.GetOID())
+			oid, t, v, err := s.Handler.Get(requestPacket.GetOID())
 			if err != nil {
 				log.Printf("error while handling packet: %s", errgo.Details(err))
 				responsePacket.Error = pdu.ErrorProcessing
@@ -112,11 +111,11 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 			}
 		}
 	case *pdu.GetNext:
-		if s.GetNextHandler == nil {
-			log.Printf("warning: no get next handler for session specified")
+		if s.Handler == nil {
+			log.Printf("warning: no handler for session specified")
 		} else {
 			for _, sr := range requestPacket.SearchRanges {
-				oid, t, v, err := s.GetNextHandler(sr.From.GetIdentifier(), sr.To.GetIdentifier())
+				oid, t, v, err := s.Handler.GetNext(sr.From.GetIdentifier(), sr.To.GetIdentifier())
 				if err != nil {
 					log.Printf("error while handling packet: %s", errgo.Details(err))
 					responsePacket.Error = pdu.ErrorProcessing
