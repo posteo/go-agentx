@@ -2,6 +2,7 @@ package agentx
 
 import (
 	"bufio"
+	"io"
 	"log"
 	"net"
 	"strings"
@@ -14,11 +15,12 @@ import (
 
 // Client defines an agentx client.
 type Client struct {
-	Net     string
-	Address string
-	Timeout time.Duration
-	NameOID value.OID
-	Name    string
+	Net               string
+	Address           string
+	Timeout           time.Duration
+	ReconnectInterval time.Duration
+	NameOID           value.OID
+	Name              string
 
 	connection  net.Conn
 	requestChan chan *request
@@ -65,7 +67,6 @@ func (c *Client) Session() (*Session, error) {
 
 func (c *Client) runTransmitter() chan *pdu.HeaderPacket {
 	tx := make(chan *pdu.HeaderPacket)
-	writer := bufio.NewWriter(c.connection)
 
 	go func() {
 		for headerPacket := range tx {
@@ -74,6 +75,7 @@ func (c *Client) runTransmitter() chan *pdu.HeaderPacket {
 				log.Printf(errgo.Details(err))
 				continue
 			}
+			writer := bufio.NewWriter(c.connection)
 			if _, err := writer.Write(headerPacketBytes); err != nil {
 				log.Printf(errgo.Details(err))
 				continue
@@ -90,14 +92,40 @@ func (c *Client) runTransmitter() chan *pdu.HeaderPacket {
 
 func (c *Client) runReceiver() chan *pdu.HeaderPacket {
 	rx := make(chan *pdu.HeaderPacket)
-	reader := bufio.NewReader(c.connection)
 
 	go func() {
+	mainLoop:
 		for {
+			reader := bufio.NewReader(c.connection)
 			headerBytes := make([]byte, pdu.HeaderSize)
 			if _, err := reader.Read(headerBytes); err != nil {
 				if opErr, ok := err.(*net.OpError); ok && strings.HasSuffix(opErr.Error(), "use of closed network connection") {
 					return
+				}
+				if err == io.EOF {
+					log.Printf("lost connection - try to re-connect ...")
+				reopenLoop:
+					for {
+						time.Sleep(c.ReconnectInterval)
+						connection, err := net.Dial(c.Net, c.Address)
+						if err != nil {
+							log.Printf("try to reconnect: %s", errgo.Details(err))
+							continue reopenLoop
+						}
+						c.connection = connection
+						go func() {
+							for _, session := range c.sessions {
+								delete(c.sessions, session.ID())
+								if err := session.reopen(); err != nil {
+									log.Printf("error during reopen session: %s", errgo.Details(err))
+									return
+								}
+								c.sessions[session.ID()] = session
+								log.Printf("successful re-connected")
+							}
+						}()
+						continue mainLoop
+					}
 				}
 				panic(err)
 			}

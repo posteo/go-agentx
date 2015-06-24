@@ -17,6 +17,9 @@ type Session struct {
 	client    *Client
 	sessionID uint32
 	timeout   time.Duration
+
+	openRequestPacket     *pdu.HeaderPacket
+	registerRequestPacket *pdu.HeaderPacket
 }
 
 // ID returns the session id.
@@ -27,6 +30,10 @@ func (s *Session) ID() uint32 {
 // Register registers the client under the provided rootID with the provided priority
 // on the master agent.
 func (s *Session) Register(priority byte, baseOID value.OID) error {
+	if s.registerRequestPacket != nil {
+		return errgo.Newf("session is already registered")
+	}
+
 	requestPacket := &pdu.Register{}
 	requestPacket.Timeout.Duration = s.timeout
 	requestPacket.Timeout.Priority = priority
@@ -37,11 +44,16 @@ func (s *Session) Register(priority byte, baseOID value.OID) error {
 	if err := checkError(response); err != nil {
 		return errgo.Mask(err)
 	}
+	s.registerRequestPacket = request
 	return nil
 }
 
 // Unregister removes the registration for the provided subtree.
 func (s *Session) Unregister(priority byte, baseOID value.OID) error {
+	if s.registerRequestPacket == nil {
+		return errgo.Newf("session is not registered")
+	}
+
 	requestPacket := &pdu.Unregister{}
 	requestPacket.Timeout.Duration = s.timeout
 	requestPacket.Timeout.Priority = priority
@@ -52,6 +64,7 @@ func (s *Session) Unregister(priority byte, baseOID value.OID) error {
 	if err := checkError(response); err != nil {
 		return errgo.Mask(err)
 	}
+	s.registerRequestPacket = nil
 	return nil
 }
 
@@ -71,12 +84,32 @@ func (s *Session) open(nameOID value.OID, name string) error {
 	requestPacket.Timeout.Duration = s.timeout
 	requestPacket.ID.SetIdentifier(nameOID)
 	requestPacket.Description.Text = name
+	request := &pdu.HeaderPacket{Header: &pdu.Header{}, Packet: requestPacket}
 
-	response := s.request(&pdu.HeaderPacket{Header: &pdu.Header{}, Packet: requestPacket})
+	response := s.request(request)
 	if err := checkError(response); err != nil {
 		return errgo.Mask(err)
 	}
 	s.sessionID = response.Header.SessionID
+	s.openRequestPacket = request
+	return nil
+}
+
+func (s *Session) reopen() error {
+	if s.openRequestPacket != nil {
+		response := s.request(s.openRequestPacket)
+		if err := checkError(response); err != nil {
+			return errgo.Mask(err)
+		}
+		s.sessionID = response.Header.SessionID
+	}
+
+	if s.registerRequestPacket != nil {
+		response := s.request(s.registerRequestPacket)
+		if err := checkError(response); err != nil {
+			return errgo.Mask(err)
+		}
+	}
 
 	return nil
 }
