@@ -18,7 +18,7 @@ type environment struct {
 var (
 	e *environment
 
-	baseOID = value.MustParseOID("1.3.6.1.4.1.8072")
+	baseOID = value.MustParseOID("1.3.6.1.4.1.45995")
 )
 
 func TestMain(m *testing.M) {
@@ -27,7 +27,7 @@ func TestMain(m *testing.M) {
 		Net:     "tcp",
 		Address: "localhost:705",
 		Timeout: 60 * time.Second,
-		NameOID: value.MustParseOID("1.3.6.1.4.1.8072"),
+		NameOID: value.MustParseOID("1.3.6.1.4.1.45995"),
 		Name:    "test client",
 	}
 

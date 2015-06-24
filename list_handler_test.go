@@ -11,7 +11,7 @@ import (
 var listHandler = &ListHandler{}
 
 func init() {
-	item := listHandler.Add("1.3.6.1.4.1.8072.3.1")
+	item := listHandler.Add("1.3.6.1.4.1.45995.3.1")
 	item.Type = pdu.VariableTypeOctetString
 	item.Value = "test"
 }
@@ -27,12 +27,12 @@ func TestGet(t *testing.T) {
 	defer session.Unregister(127, baseOID)
 
 	AssertEquals(t,
-		".1.3.6.1.4.1.8072.3.1 = STRING: \"test\"",
-		SNMPGet(t, "1.3.6.1.4.1.8072.3.1"))
+		".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"",
+		SNMPGet(t, "1.3.6.1.4.1.45995.3.1"))
 
 	AssertEquals(t,
-		".1.3.6.1.4.1.8072.3.2 = No Such Object available on this agent at this OID",
-		SNMPGet(t, "1.3.6.1.4.1.8072.3.2"))
+		".1.3.6.1.4.1.45995.3.2 = No Such Object available on this agent at this OID",
+		SNMPGet(t, "1.3.6.1.4.1.45995.3.2"))
 }
 
 func TestGetNext(t *testing.T) {
@@ -46,8 +46,8 @@ func TestGetNext(t *testing.T) {
 	defer session.Unregister(127, baseOID)
 
 	AssertEquals(t,
-		".1.3.6.1.4.1.8072.3.1 = STRING: \"test\"",
-		SNMPGetNext(t, "1.3.6.1.4.1.8072.3.1"))
+		".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"",
+		SNMPGetNext(t, "1.3.6.1.4.1.45995.3.1"))
 }
 
 func TestGetNextForChildOID(t *testing.T) {
@@ -61,8 +61,8 @@ func TestGetNextForChildOID(t *testing.T) {
 	defer session.Unregister(127, baseOID)
 
 	AssertEquals(t,
-		".1.3.6.1.4.1.8072.3.1 = STRING: \"test\"",
-		SNMPGetNext(t, "1.3.6.1.4.1.8072.3"))
+		".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"",
+		SNMPGetNext(t, "1.3.6.1.4.1.45995.3"))
 }
 
 func TestGetBulk(t *testing.T) {
@@ -76,6 +76,6 @@ func TestGetBulk(t *testing.T) {
 	defer session.Unregister(127, baseOID)
 
 	AssertEquals(t,
-		".1.3.6.1.4.1.8072.3.1 = STRING: \"test\"",
-		SNMPGetBulk(t, "1.3.6.1.4.1.8072.3.1", 0, 1))
+		".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"",
+		SNMPGetBulk(t, "1.3.6.1.4.1.45995.3.1", 0, 1))
 }
