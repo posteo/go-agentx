@@ -14,7 +14,7 @@ In order to provided metrics, your have to implement the `agentx.Handler` interf
 
 ## Example
 
-```
+```go
 package main
 
 import (
@@ -104,3 +104,12 @@ func main() {
 
 If the connection to the snmp-daemon is lost, the client tries to reconnect. Therefor the property `ReconnectInterval` has be set. It specifies a duration that is waited before a re-connect is tried.
 If the client has open session or registrations, the client try to re-establish both on a successful re-connect.
+
+## Project
+
+The implementation was provided by [simia.tech GbR](http://simiatech.com).
+
+
+## License
+
+The project is licensed under LGPL (see LICENSE file).
