@@ -62,14 +62,14 @@ func (l *ListHandler) Get(oid value.OID) (value.OID, pdu.VariableType, interface
 }
 
 // GetNext tries to find the value that follows the provided oid and returns it.
-func (l *ListHandler) GetNext(from value.OID, to value.OID) (value.OID, pdu.VariableType, interface{}, error) {
+func (l *ListHandler) GetNext(from value.OID, includeFrom bool, to value.OID) (value.OID, pdu.VariableType, interface{}, error) {
 	if l.items == nil {
 		return nil, pdu.VariableTypeNoSuchObject, nil, nil
 	}
 
 	fromOID, toOID := from.String(), to.String()
 	for _, oid := range l.oids {
-		if oidWithin(oid, fromOID, toOID) {
+		if oidWithin(oid, fromOID, includeFrom, toOID) {
 			return l.Get(value.MustParseOID(oid))
 		}
 	}
@@ -77,11 +77,11 @@ func (l *ListHandler) GetNext(from value.OID, to value.OID) (value.OID, pdu.Vari
 	return nil, pdu.VariableTypeNoSuchObject, nil, nil
 }
 
-func oidWithin(oid, from, to string) bool {
+func oidWithin(oid string, from string, includeFrom bool, to string) bool {
 	oidBytes, fromBytes, toBytes := []byte(oid), []byte(from), []byte(to)
 
 	fromCompare := bytes.Compare(fromBytes, oidBytes)
 	toCompare := bytes.Compare(toBytes, oidBytes)
 
-	return (fromCompare == -1 || fromCompare == 0) && (toCompare == 1)
+	return (fromCompare == -1 || (fromCompare == 0 && includeFrom)) && (toCompare == 1)
 }
