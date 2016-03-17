@@ -29,5 +29,5 @@ import (
 // might occure during a session.
 type Handler interface {
 	Get(value.OID) (value.OID, pdu.VariableType, interface{}, error)
-	GetNext(value.OID, value.OID) (value.OID, pdu.VariableType, interface{}, error)
+	GetNext(value.OID, bool, value.OID) (value.OID, pdu.VariableType, interface{}, error)
 }

@@ -168,7 +168,7 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 			log.Printf("warning: no handler for session specified")
 		} else {
 			for _, sr := range requestPacket.SearchRanges {
-				oid, t, v, err := s.Handler.GetNext(sr.From.GetIdentifier(), sr.To.GetIdentifier())
+				oid, t, v, err := s.Handler.GetNext(sr.From.GetIdentifier(), (sr.From.Include == 1), sr.To.GetIdentifier())
 				if err != nil {
 					log.Printf("error while handling packet: %s", errgo.Details(err))
 					responsePacket.Error = pdu.ErrorProcessing
