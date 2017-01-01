@@ -42,7 +42,8 @@ func (l *ListHandler) Add(oid string) *ListItem {
 	}
 
 	l.oids = append(l.oids, oid)
-	l.oids.Sort()
+	// The following line will break OID order for x.1.1, x.2.1, x.10.1 OID sequence
+	// l.oids.Sort()
 	item := &ListItem{}
 	l.items[oid] = item
 	return item
