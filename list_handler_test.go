@@ -23,9 +23,9 @@ package agentx_test
 import (
 	"testing"
 
-	. "github.com/posteo/go-agentx"
-	"github.com/posteo/go-agentx/pdu"
-	. "github.com/posteo/go-agentx/test"
+	. "github.com/martinclaro/go-agentx"
+	"github.com/martinclaro/go-agentx/pdu"
+	. "github.com/martinclaro/go-agentx/test"
 )
 
 var listHandler = &ListHandler{}

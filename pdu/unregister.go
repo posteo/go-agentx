@@ -21,7 +21,7 @@ USA
 package pdu
 
 import (
-	"github.com/posteo/go-agentx/marshaler"
+	"github.com/martinclaro/go-agentx/marshaler"
 	"gopkg.in/errgo.v1"
 )
 

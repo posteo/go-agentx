@@ -21,8 +21,8 @@ USA
 package agentx
 
 import (
-	"github.com/posteo/go-agentx/pdu"
-	"github.com/posteo/go-agentx/value"
+	"github.com/martinclaro/go-agentx/pdu"
+	"github.com/martinclaro/go-agentx/value"
 )
 
 // Handler defines an interface for a handler of events that
