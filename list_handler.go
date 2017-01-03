@@ -21,9 +21,9 @@ USA
 package agentx
 
 import (
-	"bytes"
 	"sort"
 
+	"github.com/martinclaro/go-oidsort"
 	"github.com/martinclaro/go-agentx/pdu"
 	"github.com/martinclaro/go-agentx/value"
 )
@@ -42,8 +42,7 @@ func (l *ListHandler) Add(oid string) *ListItem {
 	}
 
 	l.oids = append(l.oids, oid)
-	// The following line will break OID order for x.1.1, x.2.1, x.10.1 OID sequence
-	// l.oids.Sort()
+	sort.Sort(oidsort.ByOidString(l.oids))
 	item := &ListItem{}
 	l.items[oid] = item
 	return item
@@ -79,10 +78,8 @@ func (l *ListHandler) GetNext(from value.OID, includeFrom bool, to value.OID) (v
 }
 
 func oidWithin(oid string, from string, includeFrom bool, to string) bool {
-	oidBytes, fromBytes, toBytes := []byte(oid), []byte(from), []byte(to)
-
-	fromCompare := bytes.Compare(fromBytes, oidBytes)
-	toCompare := bytes.Compare(toBytes, oidBytes)
+	fromCompare := oidsort.CompareOIDs(from, oid)
+	toCompare := oidsort.CompareOIDs(to, oid)
 
 	return (fromCompare == -1 || (fromCompare == 0 && includeFrom)) && (toCompare == 1)
 }
