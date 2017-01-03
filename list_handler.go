@@ -21,11 +21,11 @@ USA
 package agentx
 
 import (
-	"bytes"
 	"sort"
 
-	"github.com/posteo/go-agentx/pdu"
-	"github.com/posteo/go-agentx/value"
+	"github.com/martinclaro/go-oidsort"
+	"github.com/martinclaro/go-agentx/pdu"
+	"github.com/martinclaro/go-agentx/value"
 )
 
 // ListHandler is a helper that takes a list of oids and implements
@@ -42,7 +42,7 @@ func (l *ListHandler) Add(oid string) *ListItem {
 	}
 
 	l.oids = append(l.oids, oid)
-	l.oids.Sort()
+	sort.Sort(oidsort.ByOidString(l.oids))
 	item := &ListItem{}
 	l.items[oid] = item
 	return item
@@ -78,10 +78,8 @@ func (l *ListHandler) GetNext(from value.OID, includeFrom bool, to value.OID) (v
 }
 
 func oidWithin(oid string, from string, includeFrom bool, to string) bool {
-	oidBytes, fromBytes, toBytes := []byte(oid), []byte(from), []byte(to)
-
-	fromCompare := bytes.Compare(fromBytes, oidBytes)
-	toCompare := bytes.Compare(toBytes, oidBytes)
+	fromCompare := oidsort.CompareOIDs(from, oid)
+	toCompare := oidsort.CompareOIDs(to, oid)
 
 	return (fromCompare == -1 || (fromCompare == 0 && includeFrom)) && (toCompare == 1)
 }

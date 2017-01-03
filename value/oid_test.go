@@ -23,8 +23,8 @@ package value_test
 import (
 	"testing"
 
-	. "github.com/posteo/go-agentx/test"
-	. "github.com/posteo/go-agentx/value"
+	. "github.com/martinclaro/go-agentx/test"
+	. "github.com/martinclaro/go-agentx/value"
 )
 
 func TestCommonPrefix(t *testing.T) {

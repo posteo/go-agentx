@@ -21,7 +21,7 @@ USA
 package pdu
 
 import (
-	"github.com/posteo/go-agentx/value"
+	"github.com/martinclaro/go-agentx/value"
 	"gopkg.in/errgo.v1"
 )
 
