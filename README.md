@@ -107,8 +107,7 @@ If the client has open session or registrations, the client try to re-establish 
 
 ## Project
 
-The implementation was provided by [simia.tech GbR](http://simiatech.com).
-
+The implementation was provided by [simia.tech (haftungsbeschränkt)](https://simia.tech).
 
 ## License
 
