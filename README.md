@@ -113,4 +113,4 @@ The implementation was provided by [simia.tech (haftungsbeschränkt)](https://si
 
 ## License
 
-The project is licensed under LGPL (see LICENSE file).
+The project is licensed under LGPL 3.0 (see LICENSE file).
