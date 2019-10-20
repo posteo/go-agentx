@@ -61,6 +61,31 @@ func (o OID) CommonPrefix(other OID) OID {
 	return o[:matchCount]
 }
 
+// CompareOIDs returns an integer comparing two OIDs lexicographically.
+// The result will be 0 if oid1 == oid2, -1 if oid1 < oid2, +1 if oid1 > oid2.
+func CompareOIDs(oid1, oid2 OID) int {
+	if oid2 != nil {
+		oid1Length := len(oid1)
+		oid2Length := len(oid2)
+		for i := 0; i < oid1Length && i < oid2Length; i++ {
+			if oid1[i] < oid2[i] {
+				return -1
+			}
+			if oid1[i] > oid2[i] {
+				return 1
+			}
+		}
+		if oid1Length == oid2Length {
+			return 0
+		} else if oid1Length < oid2Length {
+			return -1
+		} else {
+			return 1
+		}
+	}
+	return 1
+}
+
 func (o OID) String() string {
 	var parts []string
 
