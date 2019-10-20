@@ -6,6 +6,7 @@ package value
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -84,6 +85,13 @@ func CompareOIDs(oid1, oid2 OID) int {
 		}
 	}
 	return 1
+}
+
+// SortOIDs performs sorting of the OID list.
+func SortOIDs(oids []OID) {
+	sort.Slice(oids, func(i, j int) bool {
+		return CompareOIDs(oids[i], oids[j]) == -1
+	})
 }
 
 func (o OID) String() string {

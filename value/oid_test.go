@@ -52,3 +52,18 @@ func TestCompareOIDs_NilValue(t *testing.T) {
 	expected := 1
 	AssertEquals(t, expected, CompareOIDs(oid1, oid2))
 }
+
+func TestSortOIDs(t *testing.T) {
+	var oidList []OID
+	oid1 := OID{1, 3, 6, 1}
+	oid2 := OID{1, 3, 6, 5, 7}
+	oid3 := OID{1, 3, 6, 1, 12}
+	oid4 := OID{1, 3, 6, 5}
+
+	oidList = append(oidList, oid1, oid2, oid3, oid4)
+	SortOIDs(oidList)
+
+	var expect []OID
+	expect = append(expect, oid1, oid3, oid4, oid2)
+	AssertEquals(t, expect, oidList)
+}
