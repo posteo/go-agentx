@@ -51,7 +51,7 @@ func TestGetNext(t *testing.T) {
 
 	AssertEquals(t,
 		".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"",
-		SNMPGetNext(t, "1.3.6.1.4.1.45995.3.1"))
+		SNMPGetNext(t, "1.3.6.1.4.1.45995.3.0"))
 }
 
 func TestGetNextForChildOID(t *testing.T) {
@@ -81,5 +81,5 @@ func TestGetBulk(t *testing.T) {
 
 	AssertEquals(t,
 		".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"",
-		SNMPGetBulk(t, "1.3.6.1.4.1.45995.3.1", 0, 1))
+		SNMPGetBulk(t, "1.3.6.1.4.1.45995.3.0", 0, 1))
 }
