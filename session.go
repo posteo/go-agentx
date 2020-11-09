@@ -42,7 +42,7 @@ func (s *Session) Register(priority byte, baseOID value.OID) error {
 	requestPacket.Timeout.Duration = s.timeout
 	requestPacket.Timeout.Priority = priority
 	requestPacket.Subtree.SetIdentifier(baseOID)
-	request := &pdu.HeaderPacket{Header: &pdu.Header{}, Packet: requestPacket}
+	request := &pdu.HeaderPacket{Header: &pdu.Header{Type: pdu.TypeRegister}, Packet: requestPacket}
 
 	response := s.request(request)
 	if err := checkError(response); err != nil {
@@ -88,7 +88,7 @@ func (s *Session) open(nameOID value.OID, name string) error {
 	requestPacket.Timeout.Duration = s.timeout
 	requestPacket.ID.SetIdentifier(nameOID)
 	requestPacket.Description.Text = name
-	request := &pdu.HeaderPacket{Header: &pdu.Header{}, Packet: requestPacket}
+	request := &pdu.HeaderPacket{Header: &pdu.Header{Type: pdu.TypeOpen}, Packet: requestPacket}
 
 	response := s.request(request)
 	if err := checkError(response); err != nil {

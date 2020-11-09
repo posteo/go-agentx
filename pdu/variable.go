@@ -7,6 +7,7 @@ package pdu
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"net"
 	"time"
 
@@ -178,4 +179,8 @@ func (v *Variable) UnmarshalBinary(data []byte) error {
 	}
 
 	return nil
+}
+
+func (v *Variable) String() string {
+	return fmt.Sprintf("(variable %s = %v)", v.Type, v.Value)
 }

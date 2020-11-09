@@ -5,6 +5,8 @@
 package pdu
 
 import (
+	"strings"
+
 	"github.com/posteo/go-agentx/value"
 	"gopkg.in/errgo.v1"
 )
@@ -44,4 +46,12 @@ func (v *Variables) UnmarshalBinary(data []byte) error {
 		offset += variable.ByteSize()
 	}
 	return nil
+}
+
+func (v Variables) String() string {
+	parts := make([]string, len(v))
+	for index, va := range v {
+		parts[index] = va.String()
+	}
+	return "[variables " + strings.Join(parts, ", ") + "]"
 }

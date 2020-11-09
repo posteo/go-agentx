@@ -36,5 +36,5 @@ func (hp *HeaderPacket) MarshalBinary() ([]byte, error) {
 }
 
 func (hp *HeaderPacket) String() string {
-	return fmt.Sprintf("[HEAD %v BODY %v]", hp.Header, hp.Packet)
+	return fmt.Sprintf("[head %v, body %v]", hp.Header, hp.Packet)
 }

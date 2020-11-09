@@ -10,3 +10,7 @@ type request struct {
 	headerPacket *pdu.HeaderPacket
 	responseChan chan *pdu.HeaderPacket
 }
+
+func (r *request) String() string {
+	return "(request " + r.headerPacket.String() + ")"
+}

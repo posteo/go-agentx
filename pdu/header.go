@@ -56,3 +56,7 @@ func (h *Header) UnmarshalBinary(data []byte) error {
 
 	return nil
 }
+
+func (h *Header) String() string {
+	return "(header " + h.Type.String() + ")"
+}

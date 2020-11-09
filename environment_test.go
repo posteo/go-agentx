@@ -5,45 +5,48 @@
 package agentx_test
 
 import (
+	"io"
 	"log"
 	"os"
+	"os/exec"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/posteo/go-agentx"
 	"github.com/posteo/go-agentx/value"
-	"gopkg.in/errgo.v1"
 )
 
 type environment struct {
-	client *agentx.Client
+	client   *agentx.Client
+	tearDown func()
 }
 
-var (
-	e *environment
+func setUpTestEnvironment(tb testing.TB) *environment {
+	cmd := exec.Command("snmpd", "-Lo", "-f", "-c", "snmpd.conf")
 
-	baseOID = value.MustParseOID("1.3.6.1.4.1.45995")
-)
+	stdout, err := cmd.StdoutPipe()
+	require.NoError(tb, err)
+	go func() {
+		io.Copy(os.Stdout, stdout)
+	}()
 
-func TestMain(m *testing.M) {
-	e = &environment{}
-	e.client = &agentx.Client{
-		Net:     "tcp",
-		Address: "localhost:705",
-		Timeout: 60 * time.Second,
-		NameOID: value.MustParseOID("1.3.6.1.4.1.45995"),
-		Name:    "test client",
+	log.Printf("run: %s", cmd)
+	require.NoError(tb, cmd.Start())
+	time.Sleep(500 * time.Millisecond)
+
+	client, err := agentx.Dial("tcp", "127.0.0.1:30705")
+	require.NoError(tb, err)
+	client.Timeout = 60 * time.Second
+	client.NameOID = value.MustParseOID("1.3.6.1.4.1.45995")
+	client.Name = "test client"
+
+	return &environment{
+		client: client,
+		tearDown: func() {
+			require.NoError(tb, client.Close())
+			require.NoError(tb, cmd.Process.Kill())
+		},
 	}
-
-	if err := e.client.Open(); err != nil {
-		log.Fatalf(errgo.Details(err))
-	}
-
-	result := m.Run()
-
-	if err := e.client.Close(); err != nil {
-		log.Fatalf(errgo.Details(err))
-	}
-
-	os.Exit(result)
 }

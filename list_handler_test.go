@@ -7,79 +7,57 @@ package agentx_test
 import (
 	"testing"
 
-	. "github.com/posteo/go-agentx"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/posteo/go-agentx"
 	"github.com/posteo/go-agentx/pdu"
-	. "github.com/posteo/go-agentx/test"
+	"github.com/posteo/go-agentx/value"
 )
 
-var listHandler = &ListHandler{}
+func TestListHandler(t *testing.T) {
+	e := setUpTestEnvironment(t)
+	defer e.tearDown()
 
-func init() {
-	item := listHandler.Add("1.3.6.1.4.1.45995.3.1")
-	item.Type = pdu.VariableTypeOctetString
-	item.Value = "test"
-}
-
-func TestGet(t *testing.T) {
 	session, err := e.client.Session()
-	AssertNoError(t, err)
+	require.NoError(t, err)
 	defer session.Close()
-	session.Handler = listHandler
 
-	AssertNoError(t,
-		session.Register(127, baseOID))
+	lh := &agentx.ListHandler{}
+	i := lh.Add("1.3.6.1.4.1.45995.3.1")
+	i.Type = pdu.VariableTypeOctetString
+	i.Value = "test"
+	session.Handler = lh
+
+	baseOID := value.MustParseOID("1.3.6.1.4.1.45995")
+
+	require.NoError(t, session.Register(127, baseOID))
 	defer session.Unregister(127, baseOID)
 
-	AssertEquals(t,
-		".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"",
-		SNMPGet(t, "1.3.6.1.4.1.45995.3.1"))
+	t.Run("Get", func(t *testing.T) {
+		assert.Equal(t,
+			".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"",
+			SNMPGet(t, "1.3.6.1.4.1.45995.3.1"))
 
-	AssertEquals(t,
-		".1.3.6.1.4.1.45995.3.2 = No Such Object available on this agent at this OID",
-		SNMPGet(t, "1.3.6.1.4.1.45995.3.2"))
-}
+		assert.Equal(t,
+			".1.3.6.1.4.1.45995.3.2 = No Such Object available on this agent at this OID",
+			SNMPGet(t, "1.3.6.1.4.1.45995.3.2"))
+	})
 
-func TestGetNext(t *testing.T) {
-	session, err := e.client.Session()
-	AssertNoError(t, err)
-	defer session.Close()
-	session.Handler = listHandler
+	t.Run("GetNext", func(t *testing.T) {
+		assert.Equal(t,
+			".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"",
+			SNMPGetNext(t, "1.3.6.1.4.1.45995.3.0"))
 
-	AssertNoError(t,
-		session.Register(127, baseOID))
-	defer session.Unregister(127, baseOID)
+		assert.Equal(t,
+			".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"",
+			SNMPGetNext(t, "1.3.6.1.4.1.45995.3"))
 
-	AssertEquals(t,
-		".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"",
-		SNMPGetNext(t, "1.3.6.1.4.1.45995.3.0"))
-}
+	})
 
-func TestGetNextForChildOID(t *testing.T) {
-	session, err := e.client.Session()
-	AssertNoError(t, err)
-	defer session.Close()
-	session.Handler = listHandler
-
-	AssertNoError(t,
-		session.Register(127, baseOID))
-	defer session.Unregister(127, baseOID)
-
-	AssertEquals(t,
-		".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"",
-		SNMPGetNext(t, "1.3.6.1.4.1.45995.3"))
-}
-
-func TestGetBulk(t *testing.T) {
-	session, err := e.client.Session()
-	AssertNoError(t, err)
-	defer session.Close()
-	session.Handler = listHandler
-
-	AssertNoError(t,
-		session.Register(127, baseOID))
-	defer session.Unregister(127, baseOID)
-
-	AssertEquals(t,
-		".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"",
-		SNMPGetBulk(t, "1.3.6.1.4.1.45995.3.0", 0, 1))
+	t.Run("GetBulk", func(t *testing.T) {
+		assert.Equal(t,
+			".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"",
+			SNMPGetBulk(t, "1.3.6.1.4.1.45995.3.0", 0, 1))
+	})
 }

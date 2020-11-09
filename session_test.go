@@ -7,33 +7,42 @@ package agentx_test
 import (
 	"testing"
 
-	. "github.com/posteo/go-agentx/test"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/posteo/go-agentx/value"
 )
 
-func TestSessionOpen(t *testing.T) {
-	session, err := e.client.Session()
-	AssertNoError(t, err)
-	defer session.Close()
+func TestSession(t *testing.T) {
+	e := setUpTestEnvironment(t)
+	defer e.tearDown()
 
-	AssertNotEquals(t, 0, session.ID())
-}
+	t.Run("Open", func(t *testing.T) {
+		session, err := e.client.Session()
+		require.NoError(t, err)
+		defer session.Close()
 
-func TestSessionClose(t *testing.T) {
-	session, err := e.client.Session()
-	AssertNoError(t, err)
+		assert.NotEqual(t, 0, session.ID())
+	})
 
-	err = session.Close()
-	AssertNoError(t, err)
-}
+	t.Run("Close", func(t *testing.T) {
+		session, err := e.client.Session()
+		require.NoError(t, err)
 
-func TestSessionRegistration(t *testing.T) {
-	session, err := e.client.Session()
-	AssertNoError(t, err)
-	defer session.Close()
+		require.NoError(t, session.Close())
+	})
 
-	AssertNoError(t,
-		session.Register(127, baseOID))
+	t.Run("Register", func(t *testing.T) {
+		session, err := e.client.Session()
+		require.NoError(t, err)
+		defer session.Close()
 
-	AssertNoError(t,
-		session.Unregister(127, baseOID))
+		baseOID := value.MustParseOID("1.3.6.1.4.1.45995")
+
+		require.NoError(t,
+			session.Register(127, baseOID))
+
+		require.NoError(t,
+			session.Unregister(127, baseOID))
+	})
 }

@@ -6,6 +6,7 @@ package agentx
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -14,43 +15,46 @@ import (
 
 	"github.com/posteo/go-agentx/pdu"
 	"github.com/posteo/go-agentx/value"
-	"gopkg.in/errgo.v1"
 )
 
 // Client defines an agentx client.
 type Client struct {
-	Net               string
-	Address           string
 	Timeout           time.Duration
 	ReconnectInterval time.Duration
 	NameOID           value.OID
 	Name              string
 
-	connection  net.Conn
+	network     string
+	address     string
+	conn        net.Conn
 	requestChan chan *request
 	sessions    map[uint32]*Session
 }
 
-// Open sets up the client.
-func (c *Client) Open() error {
-	connection, err := net.Dial(c.Net, c.Address)
+// Dial connects to the provided agentX endpoint.
+func Dial(network, address string) (*Client, error) {
+	conn, err := net.Dial(network, address)
 	if err != nil {
-		return errgo.Mask(err)
+		return nil, fmt.Errorf("dial %s %s: %w", network, address, err)
 	}
-	c.connection = connection
-	c.sessions = make(map[uint32]*Session)
-
+	c := &Client{
+		network:     network,
+		address:     address,
+		conn:        conn,
+		requestChan: make(chan *request),
+		sessions:    make(map[uint32]*Session),
+	}
 	tx := c.runTransmitter()
 	rx := c.runReceiver()
 	c.runDispatcher(tx, rx)
 
-	return nil
+	return c, nil
 }
 
 // Close tears down the client.
 func (c *Client) Close() error {
-	if err := c.connection.Close(); err != nil {
-		return errgo.Mask(err)
+	if err := c.conn.Close(); err != nil {
+		return fmt.Errorf("close connection: %w", err)
 	}
 	return nil
 }
@@ -62,7 +66,7 @@ func (c *Client) Session() (*Session, error) {
 		timeout: c.Timeout,
 	}
 	if err := s.open(c.NameOID, c.Name); err != nil {
-		return nil, errgo.Mask(err)
+		return nil, err
 	}
 	c.sessions[s.ID()] = s
 
@@ -76,16 +80,16 @@ func (c *Client) runTransmitter() chan *pdu.HeaderPacket {
 		for headerPacket := range tx {
 			headerPacketBytes, err := headerPacket.MarshalBinary()
 			if err != nil {
-				log.Printf(errgo.Details(err))
+				log.Printf("marshal error: %v", err)
 				continue
 			}
-			writer := bufio.NewWriter(c.connection)
+			writer := bufio.NewWriter(c.conn)
 			if _, err := writer.Write(headerPacketBytes); err != nil {
-				log.Printf(errgo.Details(err))
+				log.Printf("write error: %v", err)
 				continue
 			}
 			if err := writer.Flush(); err != nil {
-				log.Printf(errgo.Details(err))
+				log.Printf("flush error: %v", err)
 				continue
 			}
 		}
@@ -100,7 +104,7 @@ func (c *Client) runReceiver() chan *pdu.HeaderPacket {
 	go func() {
 	mainLoop:
 		for {
-			reader := bufio.NewReader(c.connection)
+			reader := bufio.NewReader(c.conn)
 			headerBytes := make([]byte, pdu.HeaderSize)
 			if _, err := reader.Read(headerBytes); err != nil {
 				if opErr, ok := err.(*net.OpError); ok && strings.HasSuffix(opErr.Error(), "use of closed network connection") {
@@ -111,17 +115,17 @@ func (c *Client) runReceiver() chan *pdu.HeaderPacket {
 				reopenLoop:
 					for {
 						time.Sleep(c.ReconnectInterval)
-						connection, err := net.Dial(c.Net, c.Address)
+						conn, err := net.Dial(c.network, c.address)
 						if err != nil {
-							log.Printf("try to reconnect: %s", errgo.Details(err))
+							log.Printf("try to reconnect: %v", err)
 							continue reopenLoop
 						}
-						c.connection = connection
+						c.conn = conn
 						go func() {
 							for _, session := range c.sessions {
 								delete(c.sessions, session.ID())
 								if err := session.reopen(); err != nil {
-									log.Printf("error during reopen session: %s", errgo.Details(err))
+									log.Printf("error during reopen session: %v", err)
 									return
 								}
 								c.sessions[session.ID()] = session
@@ -168,8 +172,6 @@ func (c *Client) runReceiver() chan *pdu.HeaderPacket {
 }
 
 func (c *Client) runDispatcher(tx, rx chan *pdu.HeaderPacket) {
-	c.requestChan = make(chan *request)
-
 	go func() {
 		currentPacketID := uint32(0)
 		responseChans := make(map[uint32]chan *pdu.HeaderPacket)
@@ -177,12 +179,14 @@ func (c *Client) runDispatcher(tx, rx chan *pdu.HeaderPacket) {
 		for {
 			select {
 			case request := <-c.requestChan:
+				// log.Printf(">: %v", request)
 				request.headerPacket.Header.PacketID = currentPacketID
 				responseChans[currentPacketID] = request.responseChan
 				currentPacketID++
 
 				tx <- request.headerPacket
 			case headerPacket := <-rx:
+				// log.Printf("<: %v", headerPacket)
 				packetID := headerPacket.Header.PacketID
 				responseChan, ok := responseChans[packetID]
 				if ok {

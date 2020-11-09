@@ -64,3 +64,7 @@ func (r *Response) UnmarshalBinary(data []byte) error {
 
 	return nil
 }
+
+func (r *Response) String() string {
+	return "(response " + r.Variables.String() + ")"
+}
