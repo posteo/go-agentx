@@ -6,7 +6,6 @@ package pdu
 
 import (
 	"github.com/posteo/go-agentx/marshaler"
-	"gopkg.in/errgo.v1"
 )
 
 // Open defines a pdu open packet.
@@ -27,7 +26,7 @@ func (o *Open) MarshalBinary() ([]byte, error) {
 
 	combinedBytes, err := combined.MarshalBinary()
 	if err != nil {
-		return nil, errgo.Mask(err)
+		return nil, err
 	}
 
 	return combinedBytes, nil

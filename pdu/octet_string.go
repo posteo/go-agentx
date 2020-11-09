@@ -7,8 +7,6 @@ package pdu
 import (
 	"bytes"
 	"encoding/binary"
-
-	"gopkg.in/errgo.v1"
 )
 
 // OctetString defines the pdu description packet.
@@ -36,7 +34,7 @@ func (o *OctetString) UnmarshalBinary(data []byte) error {
 
 	length := uint32(0)
 	if err := binary.Read(buffer, binary.LittleEndian, &length); err != nil {
-		return errgo.Mask(err)
+		return err
 	}
 
 	o.Text = string(data[4 : 4+length])

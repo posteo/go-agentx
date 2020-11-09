@@ -7,8 +7,7 @@ package pdu
 import (
 	"bytes"
 	"encoding/binary"
-
-	"gopkg.in/errgo.v1"
+	"fmt"
 )
 
 const (
@@ -42,7 +41,7 @@ func (h *Header) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary sets the header structure from the provided slice of bytes.
 func (h *Header) UnmarshalBinary(data []byte) error {
 	if len(data) < HeaderSize {
-		return errgo.Newf("not enough bytes (%d) to unmarshal the header (%d)", len(data), HeaderSize)
+		return fmt.Errorf("not enough bytes (%d) to unmarshal the header (%d)", len(data), HeaderSize)
 	}
 
 	h.Version, h.Type, h.Flags = data[0], Type(data[1]), Flags(data[2])

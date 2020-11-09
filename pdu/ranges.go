@@ -4,8 +4,6 @@
 
 package pdu
 
-import "gopkg.in/errgo.v1"
-
 // Ranges defines the pdu search range list packet.
 type Ranges []Range
 
@@ -20,7 +18,7 @@ func (r *Ranges) UnmarshalBinary(data []byte) error {
 	for offset := 0; offset < len(data); {
 		rng := Range{}
 		if err := rng.UnmarshalBinary(data[offset:]); err != nil {
-			return errgo.Mask(err)
+			return err
 		}
 		*r = append(*r, rng)
 		offset += rng.ByteSize()

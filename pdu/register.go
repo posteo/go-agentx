@@ -6,7 +6,6 @@ package pdu
 
 import (
 	"github.com/posteo/go-agentx/marshaler"
-	"gopkg.in/errgo.v1"
 )
 
 // Register defines the pdu register packet.
@@ -26,7 +25,7 @@ func (r *Register) MarshalBinary() ([]byte, error) {
 
 	combinedBytes, err := combined.MarshalBinary()
 	if err != nil {
-		return nil, errgo.Mask(err)
+		return nil, err
 	}
 
 	return combinedBytes, nil

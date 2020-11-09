@@ -6,8 +6,6 @@ package marshaler
 
 import (
 	"encoding"
-
-	"gopkg.in/errgo.v1"
 )
 
 // Multi defines a binary marshaler that marshals all child marshalers
@@ -26,7 +24,7 @@ func (m Multi) MarshalBinary() ([]byte, error) {
 	for _, marshaler := range m {
 		data, err := marshaler.MarshalBinary()
 		if err != nil {
-			return nil, errgo.Mask(err)
+			return nil, err
 		}
 		result = append(result, data...)
 	}

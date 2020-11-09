@@ -9,8 +9,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
-	"gopkg.in/errgo.v1"
 )
 
 // OID defines an OID.
@@ -25,7 +23,7 @@ func ParseOID(text string) (OID, error) {
 	for _, part := range parts {
 		subidentifier, err := strconv.ParseUint(part, 10, 32)
 		if err != nil {
-			return nil, errgo.Notef(err, "could not subidentifier [%s] to uint32", part)
+			return nil, fmt.Errorf("parse uint [%s]: %w", part, err)
 		}
 		result = append(result, uint32(subidentifier))
 	}

@@ -6,8 +6,6 @@ package pdu
 
 import (
 	"fmt"
-
-	"gopkg.in/errgo.v1"
 )
 
 // Range defines the pdu search range packet.
@@ -30,10 +28,10 @@ func (r *Range) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary sets the packet structure from the provided slice of bytes.
 func (r *Range) UnmarshalBinary(data []byte) error {
 	if err := r.From.UnmarshalBinary(data); err != nil {
-		return errgo.Mask(err)
+		return err
 	}
 	if err := r.To.UnmarshalBinary(data[r.From.ByteSize():]); err != nil {
-		return errgo.Mask(err)
+		return err
 	}
 	return nil
 }

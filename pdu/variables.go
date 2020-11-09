@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/posteo/go-agentx/value"
-	"gopkg.in/errgo.v1"
 )
 
 // Variables defines a list of variable bindings.
@@ -27,7 +26,7 @@ func (v *Variables) MarshalBinary() ([]byte, error) {
 	for _, variable := range *v {
 		data, err := variable.MarshalBinary()
 		if err != nil {
-			return nil, errgo.Mask(err)
+			return nil, err
 		}
 		result = append(result, data...)
 	}
@@ -40,7 +39,7 @@ func (v *Variables) UnmarshalBinary(data []byte) error {
 	for offset := 0; offset < len(data); {
 		variable := Variable{}
 		if err := variable.UnmarshalBinary(data[offset:]); err != nil {
-			return errgo.Mask(err)
+			return err
 		}
 		*v = append(*v, variable)
 		offset += variable.ByteSize()

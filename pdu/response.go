@@ -8,8 +8,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"time"
-
-	"gopkg.in/errgo.v1"
 )
 
 // Response defines the pdu response packet.
@@ -36,7 +34,7 @@ func (r *Response) MarshalBinary() ([]byte, error) {
 
 	vBytes, err := r.Variables.MarshalBinary()
 	if err != nil {
-		return nil, errgo.Mask(err)
+		return nil, err
 	}
 	buffer.Write(vBytes)
 
@@ -49,17 +47,17 @@ func (r *Response) UnmarshalBinary(data []byte) error {
 
 	upTime := uint32(0)
 	if err := binary.Read(buffer, binary.LittleEndian, &upTime); err != nil {
-		return errgo.Mask(err)
+		return err
 	}
 	r.UpTime = time.Second * time.Duration(upTime*100)
 	if err := binary.Read(buffer, binary.LittleEndian, &r.Error); err != nil {
-		return errgo.Mask(err)
+		return err
 	}
 	if err := binary.Read(buffer, binary.LittleEndian, &r.Index); err != nil {
-		return errgo.Mask(err)
+		return err
 	}
 	if err := r.Variables.UnmarshalBinary(data[8:]); err != nil {
-		return errgo.Mask(err)
+		return err
 	}
 
 	return nil

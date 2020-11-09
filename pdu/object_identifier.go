@@ -9,7 +9,6 @@ import (
 	"encoding/binary"
 
 	"github.com/posteo/go-agentx/value"
-	"gopkg.in/errgo.v1"
 )
 
 // ObjectIdentifier defines the pdu object identifier packet.
@@ -84,7 +83,7 @@ func (o *ObjectIdentifier) UnmarshalBinary(data []byte) error {
 	for index := byte(0); index < count; index++ {
 		var subidentifier uint32
 		if err := binary.Read(buffer, binary.LittleEndian, &subidentifier); err != nil {
-			return errgo.Mask(err)
+			return err
 		}
 		o.Subidentifiers = append(o.Subidentifiers, subidentifier)
 	}

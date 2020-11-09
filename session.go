@@ -6,12 +6,12 @@ package agentx
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/posteo/go-agentx/pdu"
 	"github.com/posteo/go-agentx/value"
-	"gopkg.in/errgo.v1"
 )
 
 // Session defines an agentx session.
@@ -35,7 +35,7 @@ func (s *Session) ID() uint32 {
 // on the master agent.
 func (s *Session) Register(priority byte, baseOID value.OID) error {
 	if s.registerRequestPacket != nil {
-		return errgo.Newf("session is already registered")
+		return fmt.Errorf("session is already registered")
 	}
 
 	requestPacket := &pdu.Register{}
@@ -46,7 +46,7 @@ func (s *Session) Register(priority byte, baseOID value.OID) error {
 
 	response := s.request(request)
 	if err := checkError(response); err != nil {
-		return errgo.Mask(err)
+		return err
 	}
 	s.registerRequestPacket = request
 	return nil
@@ -55,7 +55,7 @@ func (s *Session) Register(priority byte, baseOID value.OID) error {
 // Unregister removes the registration for the provided subtree.
 func (s *Session) Unregister(priority byte, baseOID value.OID) error {
 	if s.registerRequestPacket == nil {
-		return errgo.Newf("session is not registered")
+		return fmt.Errorf("session is not registered")
 	}
 
 	requestPacket := &pdu.Unregister{}
@@ -66,7 +66,7 @@ func (s *Session) Unregister(priority byte, baseOID value.OID) error {
 
 	response := s.request(request)
 	if err := checkError(response); err != nil {
-		return errgo.Mask(err)
+		return err
 	}
 	s.registerRequestPacket = nil
 	return nil
@@ -78,7 +78,7 @@ func (s *Session) Close() error {
 
 	response := s.request(&pdu.HeaderPacket{Header: &pdu.Header{}, Packet: requestPacket})
 	if err := checkError(response); err != nil {
-		return errgo.Mask(err)
+		return err
 	}
 	return nil
 }
@@ -92,7 +92,7 @@ func (s *Session) open(nameOID value.OID, name string) error {
 
 	response := s.request(request)
 	if err := checkError(response); err != nil {
-		return errgo.Mask(err)
+		return err
 	}
 	s.sessionID = response.Header.SessionID
 	s.openRequestPacket = request
@@ -103,7 +103,7 @@ func (s *Session) reopen() error {
 	if s.openRequestPacket != nil {
 		response := s.request(s.openRequestPacket)
 		if err := checkError(response); err != nil {
-			return errgo.Mask(err)
+			return err
 		}
 		s.sessionID = response.Header.SessionID
 	}
@@ -111,7 +111,7 @@ func (s *Session) reopen() error {
 	if s.registerRequestPacket != nil {
 		response := s.request(s.registerRequestPacket)
 		if err := checkError(response); err != nil {
-			return errgo.Mask(err)
+			return err
 		}
 	}
 
@@ -138,7 +138,7 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 		} else {
 			oid, t, v, err := s.Handler.Get(requestPacket.GetOID())
 			if err != nil {
-				log.Printf("error while handling packet: %s", errgo.Details(err))
+				log.Printf("error while handling packet: %v", err)
 				responsePacket.Error = pdu.ErrorProcessing
 			}
 			if oid == nil {
@@ -154,7 +154,7 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 			for _, sr := range requestPacket.SearchRanges {
 				oid, t, v, err := s.Handler.GetNext(sr.From.GetIdentifier(), (sr.From.Include == 1), sr.To.GetIdentifier())
 				if err != nil {
-					log.Printf("error while handling packet: %s", errgo.Details(err))
+					log.Printf("error while handling packet: %v", err)
 					responsePacket.Error = pdu.ErrorProcessing
 				}
 

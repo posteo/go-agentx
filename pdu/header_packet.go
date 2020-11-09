@@ -6,8 +6,6 @@ package pdu
 
 import (
 	"fmt"
-
-	"gopkg.in/errgo.v1"
 )
 
 // HeaderPacket defines a container structure for a header and a packet.
@@ -20,7 +18,7 @@ type HeaderPacket struct {
 func (hp *HeaderPacket) MarshalBinary() ([]byte, error) {
 	payloadBytes, err := hp.Packet.MarshalBinary()
 	if err != nil {
-		return nil, errgo.Mask(err)
+		return nil, err
 	}
 
 	hp.Header.Version = 1
@@ -29,7 +27,7 @@ func (hp *HeaderPacket) MarshalBinary() ([]byte, error) {
 
 	result, err := hp.Header.MarshalBinary()
 	if err != nil {
-		return nil, errgo.Mask(err)
+		return nil, err
 	}
 
 	return append(result, payloadBytes...), nil
