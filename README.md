@@ -30,7 +30,7 @@ import (
 )
 
 func main() {
-    client, err := &agentx.Dial("tcp", "localhost:705")
+    client, err := agentx.Dial("tcp", "localhost:705")
     if err != nil {
         log.Fatalf(err)
     }
