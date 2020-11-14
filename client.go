@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/posteo/go-agentx/pdu"
-	"github.com/posteo/go-agentx/value"
+	"go-agentx/pdu"
+	"go-agentx/value"
 )
 
 // Client defines an agentx client.

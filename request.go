@@ -4,7 +4,7 @@
 
 package agentx
 
-import "github.com/posteo/go-agentx/pdu"
+import "go-agentx/pdu"
 
 type request struct {
 	headerPacket *pdu.HeaderPacket

@@ -8,8 +8,8 @@ import (
 	"bytes"
 	"sort"
 
-	"github.com/posteo/go-agentx/pdu"
-	"github.com/posteo/go-agentx/value"
+	"go-agentx/pdu"
+	"go-agentx/value"
 )
 
 // ListHandler is a helper that takes a list of oids and implements
