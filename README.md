@@ -32,14 +32,14 @@ import (
 func main() {
     client, err := agentx.Dial("tcp", "localhost:705")
     if err != nil {
-        log.Fatalf(err)
+        log.Fatal(err)
     }
     client.Timeout = 1 * time.Minute
     client.ReconnectInterval = 1 * time.Second
 
     session, err := client.Session()
     if err != nil {
-        log.Fatalf(err)
+        log.Fatal(err)
     }
 
     listHandler := &agentx.ListHandler{}
@@ -87,7 +87,7 @@ func main() {
     session.Handler = listHandler
 
     if err := session.Register(127, value.MustParseOID("1.3.6.1.4.1.45995.3")); err != nil {
-        log.Fatalf(err)
+        log.Fatal(err)
     }
 
     for {
