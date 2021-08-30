@@ -16,7 +16,8 @@ import (
 
 // Session defines an agentx session.
 type Session struct {
-	Handler Handler
+	Handler        Handler
+	HandlerFactory HandlerFactory
 
 	client    *Client
 	sessionID uint32
@@ -132,11 +133,12 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 
 	switch requestPacket := request.Packet.(type) {
 	case *pdu.Get:
-		if s.Handler == nil {
+		handler := s.getHandler(request.Header.TransactionID)
+		if handler == nil {
 			log.Printf("warning: no handler for session specified")
 			responsePacket.Variables.Add(requestPacket.GetOID(), pdu.VariableTypeNull, nil)
 		} else {
-			oid, t, v, err := s.Handler.Get(requestPacket.GetOID())
+			oid, t, v, err := handler.Get(requestPacket.GetOID())
 			if err != nil {
 				log.Printf("error while handling packet: %v", err)
 				responsePacket.Error = pdu.ErrorProcessing
@@ -148,11 +150,12 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 			}
 		}
 	case *pdu.GetNext:
-		if s.Handler == nil {
+		handler := s.getHandler(request.Header.TransactionID)
+		if handler == nil {
 			log.Printf("warning: no handler for session specified")
 		} else {
 			for _, sr := range requestPacket.SearchRanges {
-				oid, t, v, err := s.Handler.GetNext(sr.From.GetIdentifier(), (sr.From.Include == 1), sr.To.GetIdentifier())
+				oid, t, v, err := handler.GetNext(sr.From.GetIdentifier(), (sr.From.Include == 1), sr.To.GetIdentifier())
 				if err != nil {
 					log.Printf("error while handling packet: %v", err)
 					responsePacket.Error = pdu.ErrorProcessing
@@ -173,6 +176,16 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 	return &pdu.HeaderPacket{Header: responseHeader, Packet: responsePacket}
 }
 
+func (s *Session) getHandler(transactionId uint32) Handler {
+	if s.Handler != nil && s.HandlerFactory != nil {
+		log.Printf("Warning: Handler and HandlerFactory defined for this session. Most likely thats' unwanted.")
+	}
+	if s.HandlerFactory != nil {
+		return s.HandlerFactory(transactionId)
+	}
+	return s.Handler
+}
+
 func checkError(hp *pdu.HeaderPacket) error {
 	response, ok := hp.Packet.(*pdu.Response)
 	if !ok {
@@ -183,3 +196,6 @@ func checkError(hp *pdu.HeaderPacket) error {
 	}
 	return errors.New(response.Error.String())
 }
+
+// HandlerFactory is used for getting handlers per transactionId
+type HandlerFactory func(transactionId uint32) Handler
