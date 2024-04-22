@@ -148,7 +148,7 @@ func (c *Client) runReceiver() chan *pdu.HeaderPacket {
 			case pdu.TypeResponse:
 				packet = &pdu.Response{}
 			case pdu.TypeGet:
-				packet = &pdu.Get{}
+				packet = &pdu.GetBatch{}
 			case pdu.TypeGetNext:
 				packet = &pdu.GetNext{}
 			default:

@@ -165,6 +165,24 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 				}
 			}
 		}
+	case *pdu.GetBatch:
+		if s.Handler == nil {
+			log.Printf("warning: no handler for session specified")
+		} else {
+			for _, sr := range requestPacket.SearchRanges {
+				oid, t, v, err := s.Handler.Get(sr.From.GetIdentifier())
+				if err != nil {
+					log.Printf("error while handling packet: %v", err)
+					responsePacket.Error = pdu.ErrorProcessing
+				}
+
+				if oid == nil {
+					responsePacket.Variables.Add(sr.From.GetIdentifier(), pdu.VariableTypeNoSuchObject, nil)
+				} else {
+					responsePacket.Variables.Add(oid, t, v)
+				}
+			}
+		}
 	default:
 		log.Printf("cannot handle unrequested packet: %v", request)
 		responsePacket.Error = pdu.ErrorProcessing

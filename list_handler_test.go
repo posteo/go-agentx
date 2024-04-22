@@ -27,6 +27,15 @@ func TestListHandler(t *testing.T) {
 	i := lh.Add("1.3.6.1.4.1.45995.3.1")
 	i.Type = pdu.VariableTypeOctetString
 	i.Value = "test"
+
+	i = lh.Add("1.3.6.1.4.1.45995.3.3")
+	i.Type = pdu.VariableTypeOctetString
+	i.Value = "test2"
+
+	i = lh.Add("1.3.6.1.4.1.45995.3.4")
+	i.Type = pdu.VariableTypeOctetString
+	i.Value = "test3"
+
 	session.Handler = lh
 
 	baseOID := value.MustParseOID("1.3.6.1.4.1.45995")
@@ -37,11 +46,31 @@ func TestListHandler(t *testing.T) {
 	t.Run("Get", func(t *testing.T) {
 		assert.Equal(t,
 			".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"",
-			SNMPGet(t, "1.3.6.1.4.1.45995.3.1"))
+			SNMPGetBatch(t, "1.3.6.1.4.1.45995.3.1"))
 
 		assert.Equal(t,
 			".1.3.6.1.4.1.45995.3.2 = No Such Object available on this agent at this OID",
-			SNMPGet(t, "1.3.6.1.4.1.45995.3.2"))
+			SNMPGetBatch(t, "1.3.6.1.4.1.45995.3.2"))
+
+		assert.Equal(t,
+			".1.3.6.1.4.1.45995.3.3 = STRING: \"test2\"",
+			SNMPGetBatch(t, "1.3.6.1.4.1.45995.3.3"))
+
+		assert.Equal(t,
+			".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"\n.1.3.6.1.4.1.45995.3.3 = STRING: \"test2\"",
+			SNMPGetBatch(t, "1.3.6.1.4.1.45995.3.1", "1.3.6.1.4.1.45995.3.3"))
+
+		assert.Equal(t,
+			".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"\n.1.3.6.1.4.1.45995.3.2 = No Such Object available on this agent at this OID",
+			SNMPGetBatch(t, "1.3.6.1.4.1.45995.3.1", "1.3.6.1.4.1.45995.3.2"))
+
+		assert.Equal(t,
+			".1.3.6.1.4.1.45995.3.2 = No Such Object available on this agent at this OID\n.1.3.6.1.4.1.45995.3.3 = STRING: \"test2\"",
+			SNMPGetBatch(t, "1.3.6.1.4.1.45995.3.2", "1.3.6.1.4.1.45995.3.3"))
+
+		assert.Equal(t,
+			".1.3.6.1.4.1.45995.3.1 = STRING: \"test\"\n.1.3.6.1.4.1.45995.3.3 = STRING: \"test2\"\n.1.3.6.1.4.1.45995.3.4 = STRING: \"test3\"",
+			SNMPGetBatch(t, "1.3.6.1.4.1.45995.3.1", "1.3.6.1.4.1.45995.3.3", "1.3.6.1.4.1.45995.3.4"))
 	})
 
 	t.Run("GetNext", func(t *testing.T) {
