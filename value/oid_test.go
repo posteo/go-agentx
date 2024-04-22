@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/posteo/go-agentx/value"
+	"github.com/Yamu-OSS/go-agentx/value"
 )
 
 func TestCommonPrefix(t *testing.T) {

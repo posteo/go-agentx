@@ -1,6 +1,6 @@
 # AgentX
 
-[![Documentation](https://godoc.org/github.com/posteo/go-agentx?status.svg)](http://godoc.org/github.com/posteo/go-agentx)
+[![Documentation](https://godoc.org/github.com/Yamu-OSS/go-agentx?status.svg)](http://godoc.org/github.com/Yamu-OSS/go-agentx)
 
 A library with a pure Go implementation of the [AgentX-Protocol](http://tools.ietf.org/html/rfc2741). The library is not yet feature-complete, but should be far enough to used in a production environment.
 
@@ -24,9 +24,9 @@ import (
     "net"
     "time"
 
-    "github.com/posteo/go-agentx"
-    "github.com/posteo/go-agentx/pdu"
-    "github.com/posteo/go-agentx/value"
+    "github.com/Yamu-OSS/go-agentx"
+    "github.com/Yamu-OSS/go-agentx/pdu"
+    "github.com/Yamu-OSS/go-agentx/value"
 )
 
 func main() {

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/posteo/go-agentx/value"
+	"github.com/Yamu-OSS/go-agentx/value"
 )
 
 func TestSession(t *testing.T) {
