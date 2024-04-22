@@ -9,8 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func SNMPGet(tb testing.TB, oid string) string {
-	cmd := exec.Command("snmpget", "-v2c", "-cpublic", "-On", "127.0.0.1:30161", oid)
+func SNMPGetBatch(tb testing.TB, oids ...string) string {
+	args := []string{"-v2c", "-cpublic", "-On", "127.0.0.1:30161"}
+	args = append(args, oids...)
+	cmd := exec.Command("snmpget", args...)
 	output, err := cmd.CombinedOutput()
 	require.NoError(tb, err)
 	return strings.TrimSpace(string(output))
