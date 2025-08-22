@@ -30,14 +30,9 @@ import (
 )
 
 func main() {
-    client, err := agentx.Dial("tcp", "localhost:705")
-    if err != nil {
-        log.Fatal(err)
-    }
-    client.Timeout = 1 * time.Minute
-    client.ReconnectInterval = 1 * time.Second
-
-    session, err := client.Session()
+    client, err := agentx.Dial("tcp", "localhost:705",
+        agentx.WithTimeout(1 * time.Minute),
+        agentx.WithReconnectInterval(1 * time.Second))
     if err != nil {
         log.Fatal(err)
     }
@@ -84,7 +79,10 @@ func main() {
     item.Type = pdu.VariableTypeCounter64
     item.Value = uint64(12345678901234567890)
 
-    session.Handler = listHandler
+    session, err := client.Session(value.MustParseOID("1.3.6.1.4.1.45995"), "test client", listHandler)
+    if err != nil {
+        log.Fatal(err)
+    }
 
     if err := session.Register(127, value.MustParseOID("1.3.6.1.4.1.45995.3")); err != nil {
         log.Fatal(err)
