@@ -18,7 +18,7 @@ func TestSession(t *testing.T) {
 	defer e.tearDown()
 
 	t.Run("Open", func(t *testing.T) {
-		session, err := e.client.Session()
+		session, err := e.client.Session(nil, "", nil)
 		require.NoError(t, err)
 		defer session.Close()
 
@@ -26,14 +26,14 @@ func TestSession(t *testing.T) {
 	})
 
 	t.Run("Close", func(t *testing.T) {
-		session, err := e.client.Session()
+		session, err := e.client.Session(nil, "", nil)
 		require.NoError(t, err)
 
 		require.NoError(t, session.Close())
 	})
 
 	t.Run("Register", func(t *testing.T) {
-		session, err := e.client.Session()
+		session, err := e.client.Session(nil, "", nil)
 		require.NoError(t, err)
 		defer session.Close()
 

@@ -19,15 +19,14 @@ func TestListHandler(t *testing.T) {
 	e := setUpTestEnvironment(t)
 	defer e.tearDown()
 
-	session, err := e.client.Session()
-	require.NoError(t, err)
-	defer session.Close()
-
 	lh := &agentx.ListHandler{}
 	i := lh.Add("1.3.6.1.4.1.45995.3.1")
 	i.Type = pdu.VariableTypeOctetString
 	i.Value = "test"
-	session.Handler = lh
+
+	session, err := e.client.Session(value.MustParseOID("1.3.6.1.4.1.45995"), "test client", lh)
+	require.NoError(t, err)
+	defer session.Close()
 
 	baseOID := value.MustParseOID("1.3.6.1.4.1.45995")
 

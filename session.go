@@ -7,7 +7,7 @@ package agentx
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/posteo/go-agentx/pdu"
@@ -16,14 +16,36 @@ import (
 
 // Session defines an agentx session.
 type Session struct {
-	Handler Handler
-
 	client    *Client
+	handler   Handler
 	sessionID uint32
 	timeout   time.Duration
 
 	openRequestPacket     *pdu.HeaderPacket
 	registerRequestPacket *pdu.HeaderPacket
+}
+
+func openSession(client *Client, nameOID value.OID, name string, handler Handler) (*Session, error) {
+	s := &Session{
+		client:  client,
+		handler: handler,
+		timeout: client.options.timeout,
+	}
+
+	requestPacket := &pdu.Open{}
+	requestPacket.Timeout.Duration = s.timeout
+	requestPacket.ID.SetIdentifier(nameOID)
+	requestPacket.Description.Text = name
+	request := &pdu.HeaderPacket{Header: &pdu.Header{Type: pdu.TypeOpen}, Packet: requestPacket}
+
+	response := s.request(request)
+	if err := checkError(response); err != nil {
+		return nil, err
+	}
+	s.sessionID = response.Header.SessionID
+	s.openRequestPacket = request
+
+	return s, nil
 }
 
 // ID returns the session id.
@@ -83,22 +105,6 @@ func (s *Session) Close() error {
 	return nil
 }
 
-func (s *Session) open(nameOID value.OID, name string) error {
-	requestPacket := &pdu.Open{}
-	requestPacket.Timeout.Duration = s.timeout
-	requestPacket.ID.SetIdentifier(nameOID)
-	requestPacket.Description.Text = name
-	request := &pdu.HeaderPacket{Header: &pdu.Header{Type: pdu.TypeOpen}, Packet: requestPacket}
-
-	response := s.request(request)
-	if err := checkError(response); err != nil {
-		return err
-	}
-	s.sessionID = response.Header.SessionID
-	s.openRequestPacket = request
-	return nil
-}
-
 func (s *Session) reopen() error {
 	if s.openRequestPacket != nil {
 		response := s.request(s.openRequestPacket)
@@ -132,41 +138,45 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 
 	switch requestPacket := request.Packet.(type) {
 	case *pdu.Get:
-		if s.Handler == nil {
-			log.Printf("warning: no handler for session specified")
+		if s.handler == nil {
+			s.client.logger.Warn("no handler for session specified")
 			responsePacket.Variables.Add(requestPacket.GetOID(), pdu.VariableTypeNull, nil)
+			break
+		}
+
+		oid, t, v, err := s.handler.Get(requestPacket.GetOID())
+		if err != nil {
+			s.client.logger.Error("packet error", slog.Any("err", err))
+			responsePacket.Error = pdu.ErrorProcessing
+		}
+		if oid == nil {
+			responsePacket.Variables.Add(requestPacket.GetOID(), pdu.VariableTypeNoSuchObject, nil)
 		} else {
-			oid, t, v, err := s.Handler.Get(requestPacket.GetOID())
+			responsePacket.Variables.Add(oid, t, v)
+		}
+
+	case *pdu.GetNext:
+		if s.handler == nil {
+			s.client.logger.Warn("no handler for session specified")
+			break
+		}
+
+		for _, sr := range requestPacket.SearchRanges {
+			oid, t, v, err := s.handler.GetNext(sr.From.GetIdentifier(), (sr.From.Include == 1), sr.To.GetIdentifier())
 			if err != nil {
-				log.Printf("error while handling packet: %v", err)
+				s.client.logger.Error("packet error", slog.Any("err", err))
 				responsePacket.Error = pdu.ErrorProcessing
 			}
+
 			if oid == nil {
-				responsePacket.Variables.Add(requestPacket.GetOID(), pdu.VariableTypeNoSuchObject, nil)
+				responsePacket.Variables.Add(sr.From.GetIdentifier(), pdu.VariableTypeEndOfMIBView, nil)
 			} else {
 				responsePacket.Variables.Add(oid, t, v)
 			}
 		}
-	case *pdu.GetNext:
-		if s.Handler == nil {
-			log.Printf("warning: no handler for session specified")
-		} else {
-			for _, sr := range requestPacket.SearchRanges {
-				oid, t, v, err := s.Handler.GetNext(sr.From.GetIdentifier(), (sr.From.Include == 1), sr.To.GetIdentifier())
-				if err != nil {
-					log.Printf("error while handling packet: %v", err)
-					responsePacket.Error = pdu.ErrorProcessing
-				}
 
-				if oid == nil {
-					responsePacket.Variables.Add(sr.From.GetIdentifier(), pdu.VariableTypeEndOfMIBView, nil)
-				} else {
-					responsePacket.Variables.Add(oid, t, v)
-				}
-			}
-		}
 	default:
-		log.Printf("cannot handle unrequested packet: %v", request)
+		s.client.logger.Error("unable to handle packet", slog.String("packet-type", request.Header.Type.String()))
 		responsePacket.Error = pdu.ErrorProcessing
 	}
 

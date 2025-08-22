@@ -7,6 +7,7 @@ package agentx_test
 import (
 	"io"
 	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 	"testing"
@@ -15,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/posteo/go-agentx"
-	"github.com/posteo/go-agentx/value"
 )
 
 type environment struct {
@@ -36,11 +36,10 @@ func setUpTestEnvironment(tb testing.TB) *environment {
 	require.NoError(tb, cmd.Start())
 	time.Sleep(500 * time.Millisecond)
 
-	client, err := agentx.Dial("tcp", "127.0.0.1:30705")
+	client, err := agentx.Dial("tcp", "127.0.0.1:30705",
+		agentx.WithLogger(slog.New(slog.NewTextHandler(os.Stdout, nil))),
+		agentx.WithTimeout(60*time.Second))
 	require.NoError(tb, err)
-	client.Timeout = 60 * time.Second
-	client.NameOID = value.MustParseOID("1.3.6.1.4.1.45995")
-	client.Name = "test client"
 
 	return &environment{
 		client: client,

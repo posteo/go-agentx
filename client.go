@@ -8,7 +8,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net"
 	"strings"
 	"time"
@@ -19,31 +19,40 @@ import (
 
 // Client defines an agentx client.
 type Client struct {
-	Timeout           time.Duration
-	ReconnectInterval time.Duration
-	NameOID           value.OID
-	Name              string
-
+	logger      *slog.Logger
 	network     string
 	address     string
+	options     dialOptions
 	conn        net.Conn
 	requestChan chan *request
 	sessions    map[uint32]*Session
 }
 
 // Dial connects to the provided agentX endpoint.
-func Dial(network, address string) (*Client, error) {
+func Dial(network, address string, opts ...DialOption) (*Client, error) {
+	options := dialOptions{}
+	for _, dialOption := range opts {
+		dialOption(&options)
+	}
+
 	conn, err := net.Dial(network, address)
 	if err != nil {
 		return nil, fmt.Errorf("dial %s %s: %w", network, address, err)
 	}
 	c := &Client{
+		logger:      options.logger,
 		network:     network,
 		address:     address,
+		options:     options,
 		conn:        conn,
 		requestChan: make(chan *request),
 		sessions:    make(map[uint32]*Session),
 	}
+
+	if c.logger == nil {
+		c.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
+
 	tx := c.runTransmitter()
 	rx := c.runReceiver()
 	c.runDispatcher(tx, rx)
@@ -60,16 +69,12 @@ func (c *Client) Close() error {
 }
 
 // Session sets up a new session.
-func (c *Client) Session() (*Session, error) {
-	s := &Session{
-		client:  c,
-		timeout: c.Timeout,
-	}
-	if err := s.open(c.NameOID, c.Name); err != nil {
-		return nil, err
+func (c *Client) Session(nameOID value.OID, name string, handler Handler) (*Session, error) {
+	s, err := openSession(c, nameOID, name, handler)
+	if err != nil {
+		return nil, fmt.Errorf("open session: %w", err)
 	}
 	c.sessions[s.ID()] = s
-
 	return s, nil
 }
 
@@ -80,16 +85,16 @@ func (c *Client) runTransmitter() chan *pdu.HeaderPacket {
 		for headerPacket := range tx {
 			headerPacketBytes, err := headerPacket.MarshalBinary()
 			if err != nil {
-				log.Printf("marshal error: %v", err)
+				c.logger.Debug("header packet marshal error", slog.Any("err", err))
 				continue
 			}
 			writer := bufio.NewWriter(c.conn)
 			if _, err := writer.Write(headerPacketBytes); err != nil {
-				log.Printf("write error: %v", err)
+				c.logger.Debug("header packet write error", slog.Any("err", err))
 				continue
 			}
 			if err := writer.Flush(); err != nil {
-				log.Printf("flush error: %v", err)
+				c.logger.Debug("header packet flush error", slog.Any("err", err))
 				continue
 			}
 		}
@@ -111,13 +116,13 @@ func (c *Client) runReceiver() chan *pdu.HeaderPacket {
 					return
 				}
 				if err == io.EOF {
-					log.Printf("lost connection - try to re-connect ...")
+					c.logger.Info("lost connection", slog.Duration("re-connect-in", c.options.reconnectInterval))
 				reopenLoop:
 					for {
-						time.Sleep(c.ReconnectInterval)
+						time.Sleep(c.options.reconnectInterval)
 						conn, err := net.Dial(c.network, c.address)
 						if err != nil {
-							log.Printf("try to reconnect: %v", err)
+							c.logger.Error("re-connect error", slog.Any("err", err))
 							continue reopenLoop
 						}
 						c.conn = conn
@@ -125,12 +130,12 @@ func (c *Client) runReceiver() chan *pdu.HeaderPacket {
 							for _, session := range c.sessions {
 								delete(c.sessions, session.ID())
 								if err := session.reopen(); err != nil {
-									log.Printf("error during reopen session: %v", err)
+									c.logger.Error("re-open error", slog.Any("err", err))
 									return
 								}
 								c.sessions[session.ID()] = session
-								log.Printf("successful re-connected")
 							}
+							c.logger.Info("re-connect successful")
 						}()
 						continue mainLoop
 					}
@@ -152,7 +157,7 @@ func (c *Client) runReceiver() chan *pdu.HeaderPacket {
 			case pdu.TypeGetNext:
 				packet = &pdu.GetNext{}
 			default:
-				log.Printf("unhandled packet of type %s", header.Type)
+				c.logger.Error("unable to handle packet", slog.String("packet-type", header.Type.String()))
 			}
 
 			packetBytes := make([]byte, header.PayloadLength)
@@ -197,7 +202,7 @@ func (c *Client) runDispatcher(tx, rx chan *pdu.HeaderPacket) {
 					if ok {
 						tx <- session.handle(headerPacket)
 					} else {
-						log.Printf("got without session: %v", headerPacket)
+						c.logger.Error("got packet without session", slog.String("packet-type", headerPacket.Header.Type.String()))
 					}
 				}
 			}
