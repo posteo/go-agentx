@@ -5,6 +5,8 @@
 package agentx
 
 import (
+	"context"
+
 	"github.com/posteo/go-agentx/pdu"
 	"github.com/posteo/go-agentx/value"
 )
@@ -31,7 +33,7 @@ func (l *ListHandler) Add(oid string) *ListItem {
 }
 
 // Get tries to find the provided oid and returns the corresponding value.
-func (l *ListHandler) Get(oid value.OID) (value.OID, pdu.VariableType, interface{}, error) {
+func (l *ListHandler) Get(ctx context.Context, oid value.OID) (value.OID, pdu.VariableType, any, error) {
 	if l.items == nil {
 		return nil, pdu.VariableTypeNoSuchObject, nil, nil
 	}
@@ -44,14 +46,14 @@ func (l *ListHandler) Get(oid value.OID) (value.OID, pdu.VariableType, interface
 }
 
 // GetNext tries to find the value that follows the provided oid and returns it.
-func (l *ListHandler) GetNext(from value.OID, includeFrom bool, to value.OID) (value.OID, pdu.VariableType, interface{}, error) {
+func (l *ListHandler) GetNext(ctx context.Context, from value.OID, includeFrom bool, to value.OID) (value.OID, pdu.VariableType, any, error) {
 	if l.items == nil {
 		return nil, pdu.VariableTypeNoSuchObject, nil, nil
 	}
 
 	for _, oid := range l.oids {
 		if oidWithin(oid, from, includeFrom, to) {
-			return l.Get(oid)
+			return l.Get(ctx, oid)
 		}
 	}
 

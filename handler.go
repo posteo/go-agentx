@@ -5,6 +5,8 @@
 package agentx
 
 import (
+	"context"
+
 	"github.com/posteo/go-agentx/pdu"
 	"github.com/posteo/go-agentx/value"
 )
@@ -12,6 +14,39 @@ import (
 // Handler defines an interface for a handler of events that
 // might occure during a session.
 type Handler interface {
-	Get(value.OID) (value.OID, pdu.VariableType, interface{}, error)
-	GetNext(value.OID, bool, value.OID) (value.OID, pdu.VariableType, interface{}, error)
+	Get(context.Context, value.OID) (value.OID, pdu.VariableType, any, error)
+	GetNext(context.Context, value.OID, bool, value.OID) (value.OID, pdu.VariableType, any, error)
+}
+
+type (
+	sessionIDKey     struct{}
+	transactionIDKey struct{}
+	packetIDKey      struct{}
+)
+
+func SessionID(ctx context.Context) uint32 {
+	value, _ := ctx.Value(sessionIDKey{}).(uint32)
+	return value
+}
+
+func withSessionID(ctx context.Context, value uint32) context.Context {
+	return context.WithValue(ctx, sessionIDKey{}, value)
+}
+
+func TransactionID(ctx context.Context) uint32 {
+	value, _ := ctx.Value(transactionIDKey{}).(uint32)
+	return value
+}
+
+func withTransactionID(ctx context.Context, value uint32) context.Context {
+	return context.WithValue(ctx, transactionIDKey{}, value)
+}
+
+func PacketID(ctx context.Context) uint32 {
+	value, _ := ctx.Value(packetIDKey{}).(uint32)
+	return value
+}
+
+func withPacketID(ctx context.Context, value uint32) context.Context {
+	return context.WithValue(ctx, packetIDKey{}, value)
 }

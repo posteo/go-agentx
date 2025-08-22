@@ -5,6 +5,7 @@
 package agentx
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -136,6 +137,11 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 	responseHeader.PacketID = request.Header.PacketID
 	responsePacket := &pdu.Response{}
 
+	ctx := context.Background()
+	ctx = withSessionID(ctx, request.Header.SessionID)
+	ctx = withTransactionID(ctx, request.Header.TransactionID)
+	ctx = withPacketID(ctx, request.Header.PacketID)
+
 	switch requestPacket := request.Packet.(type) {
 	case *pdu.Get:
 		if s.handler == nil {
@@ -144,7 +150,7 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 			break
 		}
 
-		oid, t, v, err := s.handler.Get(requestPacket.GetOID())
+		oid, t, v, err := s.handler.Get(ctx, requestPacket.GetOID())
 		if err != nil {
 			s.client.logger.Error("packet error", slog.Any("err", err))
 			responsePacket.Error = pdu.ErrorProcessing
@@ -162,7 +168,7 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 		}
 
 		for _, sr := range requestPacket.SearchRanges {
-			oid, t, v, err := s.handler.GetNext(sr.From.GetIdentifier(), (sr.From.Include == 1), sr.To.GetIdentifier())
+			oid, t, v, err := s.handler.GetNext(ctx, sr.From.GetIdentifier(), (sr.From.Include == 1), sr.To.GetIdentifier())
 			if err != nil {
 				s.client.logger.Error("packet error", slog.Any("err", err))
 				responsePacket.Error = pdu.ErrorProcessing
