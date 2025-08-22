@@ -5,9 +5,6 @@
 package agentx
 
 import (
-	"bytes"
-	"sort"
-
 	"github.com/posteo/go-agentx/pdu"
 	"github.com/posteo/go-agentx/value"
 )
@@ -15,7 +12,7 @@ import (
 // ListHandler is a helper that takes a list of oids and implements
 // a default behaviour for that list.
 type ListHandler struct {
-	oids  sort.StringSlice
+	oids  []value.OID
 	items map[string]*ListItem
 }
 
@@ -25,8 +22,9 @@ func (l *ListHandler) Add(oid string) *ListItem {
 		l.items = make(map[string]*ListItem)
 	}
 
-	l.oids = append(l.oids, oid)
-	l.oids.Sort()
+	parsedOID := value.MustParseOID(oid)
+	l.oids = append(l.oids, parsedOID)
+	value.SortOIDs(l.oids)
 	item := &ListItem{}
 	l.items[oid] = item
 	return item
@@ -51,21 +49,18 @@ func (l *ListHandler) GetNext(from value.OID, includeFrom bool, to value.OID) (v
 		return nil, pdu.VariableTypeNoSuchObject, nil, nil
 	}
 
-	fromOID, toOID := from.String(), to.String()
 	for _, oid := range l.oids {
-		if oidWithin(oid, fromOID, includeFrom, toOID) {
-			return l.Get(value.MustParseOID(oid))
+		if oidWithin(oid, from, includeFrom, to) {
+			return l.Get(oid)
 		}
 	}
 
 	return nil, pdu.VariableTypeNoSuchObject, nil, nil
 }
 
-func oidWithin(oid string, from string, includeFrom bool, to string) bool {
-	oidBytes, fromBytes, toBytes := []byte(oid), []byte(from), []byte(to)
-
-	fromCompare := bytes.Compare(fromBytes, oidBytes)
-	toCompare := bytes.Compare(toBytes, oidBytes)
+func oidWithin(oid value.OID, from value.OID, includeFrom bool, to value.OID) bool {
+	fromCompare := value.CompareOIDs(from, oid)
+	toCompare := value.CompareOIDs(to, oid)
 
 	return (fromCompare == -1 || (fromCompare == 0 && includeFrom)) && (toCompare == 1)
 }
