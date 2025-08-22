@@ -24,7 +24,7 @@ type environment struct {
 }
 
 func setUpTestEnvironment(tb testing.TB) *environment {
-	cmd := exec.Command("snmpd", "-Lo", "-f", "-c", "snmpd.conf")
+	cmd := exec.Command("snmpd", "-Ln", "-f", "-C", "-c", "snmpd.conf")
 
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(tb, err)
