@@ -144,21 +144,25 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 
 	switch requestPacket := request.Packet.(type) {
 	case *pdu.Get:
-		if s.handler == nil {
-			s.client.logger.Warn("no handler for session specified")
-			responsePacket.Variables.Add(requestPacket.GetOID(), pdu.VariableTypeNull, nil)
-			break
-		}
-
-		oid, t, v, err := s.handler.Get(ctx, requestPacket.GetOID())
-		if err != nil {
-			s.client.logger.Error("packet error", slog.Any("err", err))
-			responsePacket.Error = pdu.ErrorProcessing
-		}
-		if oid == nil {
-			responsePacket.Variables.Add(requestPacket.GetOID(), pdu.VariableTypeNoSuchObject, nil)
-		} else {
-			responsePacket.Variables.Add(oid, t, v)
+		// Answer every requested variable, in order: the response must
+		// carry one VarBind per SearchRange or the master rejects it.
+		for _, sr := range requestPacket.SearchRanges {
+			oid := sr.From.GetIdentifier()
+			if s.handler == nil {
+				s.client.logger.Warn("no handler for session specified")
+				responsePacket.Variables.Add(oid, pdu.VariableTypeNull, nil)
+				continue
+			}
+			roid, t, v, err := s.handler.Get(ctx, oid)
+			if err != nil {
+				s.client.logger.Error("packet error", slog.Any("err", err))
+				responsePacket.Error = pdu.ErrorProcessing
+			}
+			if roid == nil {
+				responsePacket.Variables.Add(oid, pdu.VariableTypeNoSuchObject, nil)
+			} else {
+				responsePacket.Variables.Add(roid, t, v)
+			}
 		}
 
 	case *pdu.GetNext:
