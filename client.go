@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/posteo/go-agentx/pdu"
@@ -25,7 +26,11 @@ type Client struct {
 	options     dialOptions
 	conn        net.Conn
 	requestChan chan *request
-	sessions    map[uint32]*Session
+
+	// sessionsMu guards sessions: Session/Close run on the caller's
+	// goroutine, the dispatcher and the re-connect loop on their own.
+	sessionsMu sync.RWMutex
+	sessions   map[uint32]*Session
 }
 
 // Dial connects to the provided agentX endpoint.
@@ -74,8 +79,34 @@ func (c *Client) Session(nameOID value.OID, name string, handler Handler) (*Sess
 	if err != nil {
 		return nil, fmt.Errorf("open session: %w", err)
 	}
+	c.sessionsMu.Lock()
 	c.sessions[s.ID()] = s
+	c.sessionsMu.Unlock()
 	return s, nil
+}
+
+// removeSession forgets a closed session, so it is neither consulted for
+// requests nor re-opened after a re-connect.
+func (c *Client) removeSession(id uint32) {
+	c.sessionsMu.Lock()
+	delete(c.sessions, id)
+	c.sessionsMu.Unlock()
+}
+
+// handlers returns the distinct handlers of all open sessions.
+func (c *Client) handlers() []Handler {
+	c.sessionsMu.RLock()
+	defer c.sessionsMu.RUnlock()
+	seen := make(map[Handler]bool, len(c.sessions))
+	hs := make([]Handler, 0, len(c.sessions))
+	for _, s := range c.sessions {
+		if s.handler == nil || seen[s.handler] {
+			continue
+		}
+		seen[s.handler] = true
+		hs = append(hs, s.handler)
+	}
+	return hs
 }
 
 func (c *Client) runTransmitter() chan *pdu.HeaderPacket {
@@ -127,13 +158,21 @@ func (c *Client) runReceiver() chan *pdu.HeaderPacket {
 						}
 						c.conn = conn
 						go func() {
+							c.sessionsMu.Lock()
+							old := make([]*Session, 0, len(c.sessions))
 							for _, session := range c.sessions {
-								delete(c.sessions, session.ID())
+								old = append(old, session)
+							}
+							c.sessions = make(map[uint32]*Session, len(old))
+							c.sessionsMu.Unlock()
+							for _, session := range old {
 								if err := session.reopen(); err != nil {
 									c.logger.Error("re-open error", slog.Any("err", err))
 									return
 								}
+								c.sessionsMu.Lock()
 								c.sessions[session.ID()] = session
+								c.sessionsMu.Unlock()
 							}
 							c.logger.Info("re-connect successful")
 						}()
@@ -198,12 +237,19 @@ func (c *Client) runDispatcher(tx, rx chan *pdu.HeaderPacket) {
 					responseChan <- headerPacket
 					delete(responseChans, packetID)
 				} else {
-					session, ok := c.sessions[headerPacket.Header.SessionID]
-					if ok {
-						tx <- session.handle(headerPacket)
-					} else {
-						c.logger.Error("got packet without session", slog.String("packet-type", headerPacket.Header.Type.String()))
+					// Answer from every session on this connection, not
+					// only the one named in the header: net-snmp may put
+					// variables of several registrations of the same
+					// subagent into one request addressed to any one of
+					// its sessions.
+					c.sessionsMu.RLock()
+					_, ok := c.sessions[headerPacket.Header.SessionID]
+					c.sessionsMu.RUnlock()
+					if !ok {
+						c.logger.Warn("request for unknown session, answering from all sessions",
+							slog.Any("session-id", headerPacket.Header.SessionID))
 					}
+					tx <- handleRequest(c, multiHandler(c.handlers()), headerPacket)
 				}
 			}
 		}

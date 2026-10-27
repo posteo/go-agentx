@@ -100,6 +100,7 @@ func (s *Session) Close() error {
 	requestPacket := &pdu.Close{Reason: pdu.ReasonShutdown}
 
 	response := s.request(&pdu.HeaderPacket{Header: &pdu.Header{}, Packet: requestPacket})
+	s.client.removeSession(s.sessionID)
 	if err := checkError(response); err != nil {
 		return err
 	}
@@ -131,6 +132,11 @@ func (s *Session) request(hp *pdu.HeaderPacket) *pdu.HeaderPacket {
 }
 
 func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
+	return handleRequest(s.client, s.handler, request)
+}
+
+// handleRequest answers a Get or GetNext from the master with handler.
+func handleRequest(c *Client, handler Handler, request *pdu.HeaderPacket) *pdu.HeaderPacket {
 	responseHeader := &pdu.Header{}
 	responseHeader.SessionID = request.Header.SessionID
 	responseHeader.TransactionID = request.Header.TransactionID
@@ -144,33 +150,37 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 
 	switch requestPacket := request.Packet.(type) {
 	case *pdu.Get:
-		if s.handler == nil {
-			s.client.logger.Warn("no handler for session specified")
-			responsePacket.Variables.Add(requestPacket.GetOID(), pdu.VariableTypeNull, nil)
-			break
-		}
-
-		oid, t, v, err := s.handler.Get(ctx, requestPacket.GetOID())
-		if err != nil {
-			s.client.logger.Error("packet error", slog.Any("err", err))
-			responsePacket.Error = pdu.ErrorProcessing
-		}
-		if oid == nil {
-			responsePacket.Variables.Add(requestPacket.GetOID(), pdu.VariableTypeNoSuchObject, nil)
-		} else {
-			responsePacket.Variables.Add(oid, t, v)
+		// Answer every requested variable, in order: the response must
+		// carry one VarBind per SearchRange or the master rejects it.
+		for _, sr := range requestPacket.SearchRanges {
+			oid := sr.From.GetIdentifier()
+			if handler == nil {
+				c.logger.Warn("no handler for session specified")
+				responsePacket.Variables.Add(oid, pdu.VariableTypeNull, nil)
+				continue
+			}
+			roid, t, v, err := handler.Get(ctx, oid)
+			if err != nil {
+				c.logger.Error("packet error", slog.Any("err", err))
+				responsePacket.Error = pdu.ErrorProcessing
+			}
+			if roid == nil {
+				responsePacket.Variables.Add(oid, pdu.VariableTypeNoSuchObject, nil)
+			} else {
+				responsePacket.Variables.Add(roid, t, v)
+			}
 		}
 
 	case *pdu.GetNext:
-		if s.handler == nil {
-			s.client.logger.Warn("no handler for session specified")
+		if handler == nil {
+			c.logger.Warn("no handler for session specified")
 			break
 		}
 
 		for _, sr := range requestPacket.SearchRanges {
-			oid, t, v, err := s.handler.GetNext(ctx, sr.From.GetIdentifier(), (sr.From.Include == 1), sr.To.GetIdentifier())
+			oid, t, v, err := handler.GetNext(ctx, sr.From.GetIdentifier(), (sr.From.Include == 1), sr.To.GetIdentifier())
 			if err != nil {
-				s.client.logger.Error("packet error", slog.Any("err", err))
+				c.logger.Error("packet error", slog.Any("err", err))
 				responsePacket.Error = pdu.ErrorProcessing
 			}
 
@@ -182,7 +192,7 @@ func (s *Session) handle(request *pdu.HeaderPacket) *pdu.HeaderPacket {
 		}
 
 	default:
-		s.client.logger.Error("unable to handle packet", slog.String("packet-type", request.Header.Type.String()))
+		c.logger.Error("unable to handle packet", slog.String("packet-type", request.Header.Type.String()))
 		responsePacket.Error = pdu.ErrorProcessing
 	}
 

@@ -6,7 +6,7 @@ package value
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -17,18 +17,21 @@ type OID []uint32
 // ParseOID parses the provided string and returns a valid oid. If one of the
 // subidentifers canot be parsed to an uint32, the function will panic.
 func ParseOID(text string) (OID, error) {
-	var result OID
-
-	parts := strings.Split(text, ".")
-	for _, part := range parts {
+	// One pass over the string: large tables parse tens of thousands of
+	// OIDs per rebuild, and strings.Split allocated a slice for each.
+	result := make(OID, 0, strings.Count(text, ".")+1)
+	for {
+		part, rest, more := strings.Cut(text, ".")
 		subidentifier, err := strconv.ParseUint(part, 10, 32)
 		if err != nil {
 			return nil, fmt.Errorf("parse uint [%s]: %w", part, err)
 		}
 		result = append(result, uint32(subidentifier))
+		if !more {
+			return result, nil
+		}
+		text = rest
 	}
-
-	return result, nil
 }
 
 // MustParseOID works like ParseOID expect it panics on a parsing error.
@@ -87,9 +90,7 @@ func CompareOIDs(oid1, oid2 OID) int {
 
 // SortOIDs performs sorting of the OID list.
 func SortOIDs(oids []OID) {
-	sort.Slice(oids, func(i, j int) bool {
-		return CompareOIDs(oids[i], oids[j]) == -1
-	})
+	slices.SortFunc(oids, CompareOIDs)
 }
 
 func (o OID) String() string {
